@@ -197,7 +197,7 @@ export default function SchoolProfileEditorPage() {
 
       <div className="grid lg:grid-cols-3 gap-4 items-start">
         {/* Editor */}
-        <div className="lg:col-span-2 max-w-2xl space-y-3.5">
+        <div className="lg:col-span-2 min-w-0 space-y-3.5">
           <Card>
             <CardHeader title="About the school" description="The story parents read first." />
             <div className="space-y-3.5">

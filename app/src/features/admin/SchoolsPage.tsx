@@ -121,7 +121,7 @@ export default function SchoolsPage() {
 
       {tab === "onboarding" ? (
         loadingRequests ? (
-          <div className="space-y-3 max-w-3xl"><CardSkeleton /><CardSkeleton /></div>
+          <div className="grid md:grid-cols-2 gap-3.5"><CardSkeleton /><CardSkeleton /></div>
         ) : requests.length === 0 ? (
           <EmptyState
             icon={Inbox}
@@ -129,13 +129,13 @@ export default function SchoolsPage() {
             description="When a school applies to join REDEP, its verification request appears here."
           />
         ) : (
-          <Stagger className="space-y-3 max-w-3xl">
+          <Stagger className="grid md:grid-cols-2 gap-3.5 items-stretch">
             {requests.map((r) => {
               const meta = ONBOARDING_STATUS[r.status];
               const busyHere = resolve.isPending && resolve.variables?.id === r.id;
               return (
-                <StaggerItem key={r.id}>
-                  <Card padded={false} className="p-4">
+                <StaggerItem key={r.id} className="h-full">
+                  <Card padded={false} className="p-4 h-full flex flex-col">
                     {/* Header row */}
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex flex-wrap items-center gap-2 min-w-0">
@@ -171,7 +171,7 @@ export default function SchoolsPage() {
                     )}
 
                     {/* Documents as inline chips */}
-                    <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                    <div className="mt-2.5 mb-3 flex flex-wrap items-center gap-1.5 content-start flex-1">
                       {r.documents.map((d) => {
                         const docMeta = DOC_STATUS[d.status];
                         return (
@@ -192,7 +192,7 @@ export default function SchoolsPage() {
 
                     {/* Actions */}
                     {(r.status === "PENDING" || r.status === "VERIFYING") && (
-                      <div className="mt-3 flex flex-wrap justify-end gap-2 border-t border-line pt-3">
+                      <div className="mt-auto flex flex-wrap justify-end gap-2 border-t border-line pt-3">
                         <Button
                           variant="ghost"
                           size="sm"

@@ -12,7 +12,8 @@ export function ProtectedRoute({ allow }: { allow: RoleKey[] }) {
   const location = useLocation();
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+    // Preserve the query string so demo deep-links (`?as=…`) survive the redirect.
+    return <Navigate to={{ pathname: "/login", search: location.search }} state={{ from: location.pathname }} replace />;
   }
   if (!role || !allow.includes(role)) {
     return <Navigate to={portalHome} replace />;

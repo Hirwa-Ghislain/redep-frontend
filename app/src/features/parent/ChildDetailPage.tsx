@@ -195,7 +195,7 @@ export default function ChildDetailPage() {
       )}
 
       {tab === "teachers" && (
-        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4 max-w-5xl">
+        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
           {teachers.map((t) => (
             <Card key={t.id} hover>
               <div className="flex items-start gap-3">
@@ -223,8 +223,8 @@ export default function ChildDetailPage() {
       )}
 
       {tab === "fees" && (
-        <div className="max-w-3xl">
-          <Card padded={false}>
+        <div className="grid lg:grid-cols-[1fr_340px] gap-4 items-start">
+          <Card padded={false} className="min-w-0">
             <CardHeader className="px-5 pt-5" title={`Balance — ${term?.label ?? ""}`} description="Pay from the Fees & payments page; receipts are automatic." />
             <DataTable
               columns={[
@@ -243,9 +243,23 @@ export default function ChildDetailPage() {
               empty="No fees configured for this term."
             />
           </Card>
-          <Button className="mt-4" icon={<Wallet className="size-4" />} onClick={() => navigate("/parent/payments")}>
-            Go to payments
-          </Button>
+
+          <Card className={totalDue ? "bg-primary-soft/40 border-primary/25" : undefined}>
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <p className="text-[13px] font-semibold text-ink">Due this term</p>
+              <p className={`font-display font-bold text-[16px] tnum ${totalDue ? "text-clay-deep" : "text-primary-deep"}`}>
+                {formatRWF(totalDue)}
+              </p>
+            </div>
+            <p className="text-[12px] text-muted mb-3">
+              {totalDue
+                ? "Settle outstanding fees from Fees & payments — every payment issues a digital receipt automatically."
+                : "Everything is settled for this term. Receipts for past payments live under Receipts."}
+            </p>
+            <Button icon={<Wallet className="size-4" />} onClick={() => navigate("/parent/payments")}>
+              Go to payments
+            </Button>
+          </Card>
         </div>
       )}
 

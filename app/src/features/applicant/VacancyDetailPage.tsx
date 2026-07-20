@@ -162,7 +162,7 @@ export default function VacancyDetailPage() {
 
       <div className="grid lg:grid-cols-3 gap-4 items-start">
         {/* Main column */}
-        <div className="lg:col-span-2 max-w-2xl space-y-4">
+        <div className="lg:col-span-2 min-w-0 space-y-4">
           <Card>
             <div className="flex flex-wrap gap-1.5 mb-3.5">
               <Badge variant="info">{POSITION_TYPE_LABEL[vacancy.positionType]}</Badge>

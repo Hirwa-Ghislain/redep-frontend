@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Megaphone, Pin, Plus, Trash2 } from "lucide-react";
+import { CheckCircle2, Megaphone, Pin, Plus, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PageTransition, Stagger, StaggerItem } from "@/components/motion";
 import { Can } from "@/components/auth/guards";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
+import { Card, CardHeader } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Checkbox, Input, Select, Textarea } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
@@ -103,23 +103,28 @@ export default function AnnouncementsPage() {
         }
       />
 
+      <div className="grid gap-4 lg:grid-cols-[1fr_300px] items-start">
+      {/* Feed */}
+      <div className="min-w-0">
       {isLoading ? (
-        <div className="space-y-3 max-w-3xl"><CardSkeleton /><CardSkeleton /><CardSkeleton /></div>
+        <div className="space-y-3"><CardSkeleton /><CardSkeleton /><CardSkeleton /></div>
       ) : announcements.length === 0 ? (
-        <EmptyState
-          icon={Megaphone}
-          title="Nothing published yet"
-          description="Announcements reach parents, teachers and staff in their portals the moment you publish."
-          action={
-            <Can permission={P.ANNOUNCEMENTS_PUBLISH}>
-              <Button icon={<Plus className="size-4" />} onClick={() => { setForm(EMPTY_FORM); setComposerOpen(true); }}>
-                New announcement
-              </Button>
-            </Can>
-          }
-        />
+        <Card padded={false}>
+          <EmptyState
+            icon={Megaphone}
+            title="Nothing published yet"
+            description="Announcements reach parents, teachers and staff in their portals the moment you publish."
+            action={
+              <Can permission={P.ANNOUNCEMENTS_PUBLISH}>
+                <Button icon={<Plus className="size-4" />} onClick={() => { setForm(EMPTY_FORM); setComposerOpen(true); }}>
+                  New announcement
+                </Button>
+              </Can>
+            }
+          />
+        </Card>
       ) : (
-        <Stagger className="space-y-3 max-w-3xl">
+        <Stagger className="space-y-3">
           {announcements.map((a) => {
             const meta = CATEGORY_META[a.category];
             return (
@@ -153,6 +158,49 @@ export default function AnnouncementsPage() {
           })}
         </Stagger>
       )}
+      </div>
+
+      {/* Side rail */}
+      <aside className="space-y-4">
+        {announcements.some((a) => a.pinned) && (
+          <Card>
+            <CardHeader title="Pinned" description="Held at the top of every recipient's feed." />
+            <ul className="space-y-2.5">
+              {announcements.filter((a) => a.pinned).map((a) => (
+                <li key={a.id} className="flex items-start gap-2.5">
+                  <Pin className="size-3.5 text-gold-deep shrink-0 mt-0.5" aria-hidden />
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-medium text-ink leading-snug">{a.title}</p>
+                    <p className="text-[11.5px] text-muted tnum mt-0.5">
+                      {formatDate(a.publishedAt)} · {AUDIENCE_LABEL[a.audience]}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
+
+        <Card>
+          <CardHeader title="Reaching the right people" />
+          <ul className="space-y-2 text-[12.5px] text-muted">
+            <li className="flex items-start gap-2.5">
+              <CheckCircle2 className="size-4 text-primary-deep shrink-0 mt-0.5" aria-hidden />
+              Notices publish immediately to the audience you pick — parents, teachers, staff or everyone.
+            </li>
+            <li className="flex items-start gap-2.5">
+              <CheckCircle2 className="size-4 text-primary-deep shrink-0 mt-0.5" aria-hidden />
+              Use categories consistently — <span className="font-medium text-ink">Emergency</span> and{" "}
+              <span className="font-medium text-ink">Closure</span> stand out in every feed.
+            </li>
+            <li className="flex items-start gap-2.5">
+              <CheckCircle2 className="size-4 text-primary-deep shrink-0 mt-0.5" aria-hidden />
+              Pin sparingly — pinned notices stay first until you delete or replace them.
+            </li>
+          </ul>
+        </Card>
+      </aside>
+      </div>
 
       {/* Composer */}
       <Modal

@@ -140,9 +140,8 @@ export default function ReportsPage() {
         description="Export national statistics as CSV for offline analysis, or manage recurring digests."
       />
 
-      <div className="grid lg:grid-cols-5 gap-4 items-start">
-        <div className="lg:col-span-2 space-y-4">
-          <Card className="max-w-md">
+      <div className="grid lg:grid-cols-[380px_1fr] gap-4 items-start">
+        <Card>
             <CardHeader
               title="Generate report"
               description="Pick a dataset and scope — the file downloads immediately."
@@ -185,10 +184,44 @@ export default function ReportsPage() {
                 </Button>
               </div>
             )}
+        </Card>
+
+        <div className="space-y-4 min-w-0">
+          <Card padded={false}>
+            <CardHeader
+              className="px-5 pt-4"
+              title="Generated this session"
+              description="Files already saved to your device."
+            />
+            {generated.length === 0 ? (
+              <EmptyState
+                icon={FileBarChart}
+                title="No reports yet"
+                description="Generated files will be listed here for the rest of this session."
+                className="py-10"
+              />
+            ) : (
+              <ul className="border-t border-line divide-y divide-line">
+                {generated.map((g) => (
+                  <li key={g.id} className="flex items-center gap-3 px-5 py-2.5">
+                    <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary-deep">
+                      <FileSpreadsheet className="size-3.5" aria-hidden />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13px] font-medium text-ink truncate">{g.name}</p>
+                      <p className="text-[11.5px] text-muted tnum">{formatDateTime(g.generatedAt)}</p>
+                    </div>
+                    <span className="text-[11.5px] text-muted tnum whitespace-nowrap">
+                      {formatNumber(g.rows)} row{g.rows === 1 ? "" : "s"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </Card>
 
           <FadeIn>
-            <Card className="max-w-md">
+            <Card>
               <CardHeader title="Scheduled digests" description="Recurring summaries delivered to the ministry inbox." />
               <ul className="divide-y divide-line">
                 {DIGESTS.map((d) => (
@@ -213,39 +246,6 @@ export default function ReportsPage() {
             </Card>
           </FadeIn>
         </div>
-
-        <Card padded={false} className="lg:col-span-3">
-          <CardHeader
-            className="px-5 pt-4"
-            title="Generated this session"
-            description="Files already saved to your device."
-          />
-          {generated.length === 0 ? (
-            <EmptyState
-              icon={FileBarChart}
-              title="No reports yet"
-              description="Generated files will be listed here for the rest of this session."
-              className="py-10"
-            />
-          ) : (
-            <ul className="border-t border-line divide-y divide-line">
-              {generated.map((g) => (
-                <li key={g.id} className="flex items-center gap-3 px-5 py-2.5">
-                  <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary-deep">
-                    <FileSpreadsheet className="size-3.5" aria-hidden />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-medium text-ink truncate">{g.name}</p>
-                    <p className="text-[11.5px] text-muted tnum">{formatDateTime(g.generatedAt)}</p>
-                  </div>
-                  <span className="text-[11.5px] text-muted tnum whitespace-nowrap">
-                    {formatNumber(g.rows)} row{g.rows === 1 ? "" : "s"}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
       </div>
     </PageTransition>
   );

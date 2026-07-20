@@ -82,9 +82,9 @@ export default function MessagesPage() {
           description="Threads with teachers and the school office will appear here."
         />
       ) : (
-        <div className="grid lg:grid-cols-[340px_1fr] gap-4 items-start">
+        <div className="grid lg:grid-cols-[340px_1fr] gap-4 items-stretch lg:h-[calc(100dvh-185px)]">
           {/* Thread list */}
-          <div className="rounded-(--radius-card) border border-line bg-surface overflow-hidden">
+          <div className="rounded-(--radius-card) border border-line bg-surface overflow-hidden shadow-(--shadow-card) lg:overflow-y-auto">
             {threads.map((t) => (
               <button
                 key={t.id}
@@ -111,7 +111,7 @@ export default function MessagesPage() {
 
           {/* Conversation */}
           {active && (
-            <div className="rounded-(--radius-card) border border-line bg-surface flex flex-col min-h-[480px] max-h-[calc(100dvh-220px)]">
+            <div className="rounded-(--radius-card) border border-line bg-surface shadow-(--shadow-card) flex flex-col min-h-[480px] lg:min-h-0 lg:h-full">
               <div className="border-b border-line px-5 py-3">
                 <p className="font-display font-semibold text-[14px] text-ink">{active.subject}</p>
                 <p className="text-[12px] text-muted mt-0.5">

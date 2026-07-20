@@ -154,33 +154,33 @@ export default function BroadcastPage() {
               </div>
             )}
           </Card>
+
+          {/* Guidance */}
+          <FadeIn delay={0.05}>
+            <Card padded={false} className="p-4">
+              <CardHeader
+                className="mb-3"
+                title="Responsible broadcasting"
+                description="A national push interrupts a lot of people."
+              />
+              <ul className="space-y-2 text-[12.5px] text-muted">
+                <li className="flex items-start gap-2.5">
+                  <AlertTriangle className="size-4 text-gold-deep shrink-0 mt-0.5" aria-hidden />
+                  Reserve <span className="font-medium text-ink">Everyone</span> for emergencies, platform downtime, or national policy changes.
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <CheckCircle2 className="size-4 text-primary-deep shrink-0 mt-0.5" aria-hidden />
+                  School-specific news belongs to the school's own announcements — never broadcast it nationally.
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <CheckCircle2 className="size-4 text-primary-deep shrink-0 mt-0.5" aria-hidden />
+                  Lead with what recipients must do and by when; every broadcast is recorded in the audit log.
+                </li>
+              </ul>
+            </Card>
+          </FadeIn>
         </div>
       </div>
-
-      {/* Guidance */}
-      <FadeIn delay={0.05}>
-        <Card padded={false} className="p-4 mt-4">
-          <CardHeader
-            className="mb-3"
-            title="Responsible broadcasting"
-            description="A national push interrupts a lot of people."
-          />
-          <ul className="space-y-2 text-[12.5px] text-muted">
-            <li className="flex items-start gap-2.5">
-              <AlertTriangle className="size-4 text-gold-deep shrink-0 mt-0.5" aria-hidden />
-              Reserve <span className="font-medium text-ink">Everyone</span> for emergencies, platform downtime, or national policy changes.
-            </li>
-            <li className="flex items-start gap-2.5">
-              <CheckCircle2 className="size-4 text-primary-deep shrink-0 mt-0.5" aria-hidden />
-              School-specific news belongs to the school's own announcements — never broadcast it nationally.
-            </li>
-            <li className="flex items-start gap-2.5">
-              <CheckCircle2 className="size-4 text-primary-deep shrink-0 mt-0.5" aria-hidden />
-              Lead with what recipients must do and by when; every broadcast is recorded in the audit log.
-            </li>
-          </ul>
-        </Card>
-      </FadeIn>
 
       {/* Confirm */}
       <Modal

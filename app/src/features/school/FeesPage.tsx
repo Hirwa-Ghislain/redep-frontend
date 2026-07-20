@@ -153,19 +153,21 @@ export default function FeesPage() {
         }
       />
 
-      {/* Fee structures */}
-      <div className="flex items-center justify-between mt-2 mb-3">
-        <h2 className="font-display font-semibold text-[15px] text-ink">
-          Fee structures{currentTermLabel ? ` — ${currentTermLabel}` : ""}
-        </h2>
-        <Can permission={P.FEES_CONFIGURE}>
-          <Button size="sm" icon={<Plus className="size-4" />} onClick={() => setFeeForm({ ...EMPTY_FEE })}>
-            New fee
-          </Button>
-        </Can>
-      </div>
+      <div className="grid xl:grid-cols-[1fr_360px] gap-4 items-start">
+        {/* Fee structures */}
+        <section className="min-w-0" aria-label="Fee structures">
+          <div className="flex items-center justify-between mt-2 mb-3">
+            <h2 className="font-display font-semibold text-[15px] text-ink">
+              Fee structures{currentTermLabel ? ` — ${currentTermLabel}` : ""}
+            </h2>
+            <Can permission={P.FEES_CONFIGURE}>
+              <Button size="sm" icon={<Plus className="size-4" />} onClick={() => setFeeForm({ ...EMPTY_FEE })}>
+                New fee
+              </Button>
+            </Can>
+          </div>
 
-      {!loadingFees && fees.length === 0 ? (
+          {!loadingFees && fees.length === 0 ? (
         <EmptyState
           icon={Wallet}
           title="No fees configured for this term"
@@ -216,11 +218,13 @@ export default function FeesPage() {
           empty="No fees configured for this term."
         />
       )}
+        </section>
 
-      {/* Payment channels */}
-      <h2 className="font-display font-semibold text-[15px] text-ink mt-7 mb-3">Payment channels</h2>
-      <FadeIn>
-        <Card padded={false} className="max-w-3xl">
+        {/* Payment channels */}
+        <section aria-label="Payment channels">
+          <h2 className="font-display font-semibold text-[15px] text-ink mt-2 mb-3">Payment channels</h2>
+          <FadeIn>
+            <Card padded={false}>
           <CardHeader
             className="px-4 pt-4"
             title="Where parents can pay"
@@ -273,8 +277,10 @@ export default function FeesPage() {
               })}
             </div>
           )}
-        </Card>
-      </FadeIn>
+            </Card>
+          </FadeIn>
+        </section>
+      </div>
 
       {/* Fee create/edit modal */}
       <Modal

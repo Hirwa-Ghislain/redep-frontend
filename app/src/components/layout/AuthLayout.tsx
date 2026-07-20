@@ -66,19 +66,7 @@ export function AuthLayout({ children, aside }: { children: ReactNode; aside?: R
             </motion.aside>
           )}
         </div>
-
-        {/* trust strip */}
-        <ul className="relative mx-auto mt-7 flex max-w-lg flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[12px] text-muted">
-          <li className="inline-flex items-center gap-1.5">
-            <ShieldCheck className="size-3.5 text-primary" /> Role-based access
-          </li>
-          <li className="inline-flex items-center gap-1.5">
-            <BadgeCheck className="size-3.5 text-primary" /> Verifiable receipts
-          </li>
-          <li className="inline-flex items-center gap-1.5">
-            <Armchair className="size-3.5 text-primary" /> Live seat counters
-          </li>
-        </ul>
+     
       </main>
 
       {/* footer */}

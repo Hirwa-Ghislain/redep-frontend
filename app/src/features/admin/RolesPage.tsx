@@ -140,8 +140,9 @@ export default function RolesPage() {
 
       {/* Section 2 — permission catalog reference */}
       <h2 className="font-display font-semibold text-[15px] text-ink mt-7 mb-3">Permission catalog</h2>
-      <FadeIn>
-        <Card padded={false} className="max-w-3xl">
+      <div className="grid lg:grid-cols-[1fr_320px] gap-4 items-start">
+      <FadeIn className="min-w-0">
+        <Card padded={false}>
           <CardHeader
             className="px-4 pt-4"
             title="School permission catalog"
@@ -180,6 +181,35 @@ export default function RolesPage() {
           </div>
         </Card>
       </FadeIn>
+
+      {/* How delegation works */}
+      <FadeIn delay={0.05}>
+        <Card>
+          <CardHeader title="How delegation works" />
+          <p className="text-[12.5px] text-muted mb-3">
+            <span className="font-semibold text-ink tnum">
+              {SCHOOL_PERMISSION_CATALOG.reduce((sum, g) => sum + g.items.length, 0)}
+            </span>{" "}
+            delegable permissions across{" "}
+            <span className="font-semibold text-ink tnum">{SCHOOL_PERMISSION_CATALOG.length}</span> groups.
+          </p>
+          <ul className="space-y-2 text-[12.5px] text-muted">
+            <li className="flex items-start gap-2.5">
+              <ShieldCheck className="size-4 text-primary-deep shrink-0 mt-0.5" aria-hidden />
+              Built-in roles are fixed by the platform and cannot be edited or deleted.
+            </li>
+            <li className="flex items-start gap-2.5">
+              <ShieldCheck className="size-4 text-primary-deep shrink-0 mt-0.5" aria-hidden />
+              Custom global roles can combine platform, ministry and school permissions.
+            </li>
+            <li className="flex items-start gap-2.5">
+              <ShieldCheck className="size-4 text-primary-deep shrink-0 mt-0.5" aria-hidden />
+              School administrators build their own staff roles from this catalog — nothing outside it can be delegated.
+            </li>
+          </ul>
+        </Card>
+      </FadeIn>
+      </div>
 
       {/* Create / edit drawer */}
       <Drawer

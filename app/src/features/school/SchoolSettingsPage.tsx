@@ -97,12 +97,11 @@ export default function SchoolSettingsPage() {
       />
 
       {isLoading || !school ? (
-        <div className="grid lg:grid-cols-2 gap-3.5 max-w-4xl"><CardSkeleton /><CardSkeleton /></div>
+        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3.5"><CardSkeleton /><CardSkeleton /><CardSkeleton /></div>
       ) : (
-        <div className="grid lg:grid-cols-2 gap-3.5 items-start max-w-4xl">
-          <div className="space-y-3.5">
-            {/* Identity */}
-            <Card>
+        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3.5 items-start">
+          {/* Identity */}
+          <Card>
               <CardHeader
                 title="School identity"
                 description="Registered with the Ministry of Education — contact REDEP to correct."
@@ -140,59 +139,57 @@ export default function SchoolSettingsPage() {
               </dl>
             </Card>
 
-            {/* Academic calendar */}
-            <Card padded={false}>
-              <CardHeader
-                className="px-4 pt-4"
-                title="Academic calendar"
-                description="Terms are set nationally by the Ministry of Education."
-                action={
-                  <span className="flex size-8 items-center justify-center rounded-lg bg-sky-soft text-sky-deep">
-                    <CalendarDays className="size-4" aria-hidden />
-                  </span>
-                }
-              />
-              <div className="divide-y divide-line">
-                {terms.map((t) => (
-                  <div key={t.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
-                    <div>
-                      <p className="text-[13px] font-medium text-ink">{t.label}</p>
-                      <p className="text-[12px] text-muted tnum">
-                        {formatDate(t.startDate)} — {formatDate(t.endDate)}
-                      </p>
-                    </div>
-                    {t.current && <Badge variant="gold">Current</Badge>}
+          {/* Notification defaults */}
+          <Card>
+            <CardHeader
+              title="Notification defaults"
+              description="How the school communicates by default — individual users can still adjust their own."
+            />
+            <div className="divide-y divide-line">
+              {PREF_META.map((m) => (
+                <div key={m.key} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
+                  <div>
+                    <p className="text-[13px] font-medium text-ink">{m.label}</p>
+                    <p className="text-[12px] text-muted mt-0.5">{m.description}</p>
                   </div>
-                ))}
-                {terms.length === 0 && (
-                  <p className="px-4 py-5 text-[13px] text-muted">No terms published yet.</p>
-                )}
-              </div>
-            </Card>
-          </div>
+                  <Switch checked={prefs[m.key]} onChange={(v) => setPref(m.key, v)} label={m.label} />
+                </div>
+              ))}
+            </div>
+          </Card>
 
-          <div className="space-y-3.5">
-            {/* Notification defaults */}
-            <Card>
-              <CardHeader
-                title="Notification defaults"
-                description="How the school communicates by default — individual users can still adjust their own."
-              />
-              <div className="divide-y divide-line">
-                {PREF_META.map((m) => (
-                  <div key={m.key} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
-                    <div>
-                      <p className="text-[13px] font-medium text-ink">{m.label}</p>
-                      <p className="text-[12px] text-muted mt-0.5">{m.description}</p>
-                    </div>
-                    <Switch checked={prefs[m.key]} onChange={(v) => setPref(m.key, v)} label={m.label} />
+          {/* Academic calendar */}
+          <Card padded={false}>
+            <CardHeader
+              className="px-4 pt-4"
+              title="Academic calendar"
+              description="Terms are set nationally by the Ministry of Education."
+              action={
+                <span className="flex size-8 items-center justify-center rounded-lg bg-sky-soft text-sky-deep">
+                  <CalendarDays className="size-4" aria-hidden />
+                </span>
+              }
+            />
+            <div className="divide-y divide-line">
+              {terms.map((t) => (
+                <div key={t.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                  <div>
+                    <p className="text-[13px] font-medium text-ink">{t.label}</p>
+                    <p className="text-[12px] text-muted tnum">
+                      {formatDate(t.startDate)} — {formatDate(t.endDate)}
+                    </p>
                   </div>
-                ))}
-              </div>
-            </Card>
+                  {t.current && <Badge variant="gold">Current</Badge>}
+                </div>
+              ))}
+              {terms.length === 0 && (
+                <p className="px-4 py-5 text-[13px] text-muted">No terms published yet.</p>
+              )}
+            </div>
+          </Card>
 
-            {/* Danger zone */}
-            <Card className="border-clay/40">
+          {/* Danger zone */}
+          <Card className="border-clay/40">
               <CardHeader
                 title="Danger zone"
                 description="Deactivation removes the school from Discover and freezes admissions."
@@ -214,8 +211,7 @@ export default function SchoolSettingsPage() {
                   Request deactivation
                 </Button>
               </Can>
-            </Card>
-          </div>
+          </Card>
         </div>
       )}
 

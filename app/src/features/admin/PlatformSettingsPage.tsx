@@ -75,7 +75,7 @@ export default function PlatformSettingsPage() {
         description="Global calendar, payment rails, feature rollout and compliance controls."
       />
 
-      <Stagger className="grid lg:grid-cols-2 gap-4 max-w-5xl items-start">
+      <Stagger className="grid md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
         {/* Academic calendar */}
         <StaggerItem>
           <Card padded={false}>

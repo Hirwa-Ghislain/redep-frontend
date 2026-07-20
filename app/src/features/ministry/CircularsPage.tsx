@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Megaphone, Pin, Plus } from "lucide-react";
+import { CheckCircle2, Megaphone, Pin, Plus } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PageTransition, Stagger, StaggerItem } from "@/components/motion";
 import { Can } from "@/components/auth/guards";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
+import { Card, CardHeader } from "@/components/ui/Card";
 import { Checkbox, Input, Select, Textarea } from "@/components/ui/Input";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
@@ -96,48 +96,94 @@ export default function CircularsPage() {
         }
       />
 
-      {isLoading ? (
-        <div className="space-y-4 max-w-3xl">
-          <CardSkeleton />
-          <CardSkeleton />
-          <CardSkeleton />
+      <div className="grid gap-4 lg:grid-cols-[1fr_300px] items-start">
+        {/* Feed */}
+        <div className="min-w-0">
+          {isLoading ? (
+            <div className="space-y-4">
+              <CardSkeleton />
+              <CardSkeleton />
+              <CardSkeleton />
+            </div>
+          ) : circulars.length === 0 ? (
+            <Card padded={false}>
+              <EmptyState
+                icon={Megaphone}
+                title="No circulars yet"
+                description="National circulars published by the ministry will appear here."
+                action={
+                  <Can permission={P.MINISTRY_ANNOUNCE}>
+                    <Button icon={<Plus className="size-4" />} onClick={() => setComposeOpen(true)}>
+                      Publish the first circular
+                    </Button>
+                  </Can>
+                }
+              />
+            </Card>
+          ) : (
+            <Stagger className="space-y-3">
+              {circulars.map((c) => (
+                <StaggerItem key={c.id}>
+                  <Card padded={false} className="p-4">
+                    <div className="flex flex-wrap items-center gap-2 mb-2 text-[11px]">
+                      <Badge variant={c.category === "CIRCULAR" ? "gold" : "neutral"}>{CATEGORY_LABEL[c.category]}</Badge>
+                      <Badge variant="info">{AUDIENCE_LABEL[c.audience]}</Badge>
+                      {c.pinned && (
+                        <Badge variant="ink" className="inline-flex items-center gap-1">
+                          <Pin className="size-3" aria-hidden /> Pinned
+                        </Badge>
+                      )}
+                      <span className="ml-auto text-faint tnum">{formatDate(c.publishedAt)}</span>
+                    </div>
+                    <h3 className="font-display font-semibold text-[14px] text-ink leading-snug">{c.title}</h3>
+                    <p className="text-[13px] text-muted leading-relaxed mt-1 whitespace-pre-line">{c.body}</p>
+                    <p className="text-[11px] text-faint mt-2.5">— {c.authorName}</p>
+                  </Card>
+                </StaggerItem>
+              ))}
+            </Stagger>
+          )}
         </div>
-      ) : circulars.length === 0 ? (
-        <EmptyState
-          icon={Megaphone}
-          title="No circulars yet"
-          description="National circulars published by the ministry will appear here."
-          action={
-            <Can permission={P.MINISTRY_ANNOUNCE}>
-              <Button icon={<Plus className="size-4" />} onClick={() => setComposeOpen(true)}>
-                Publish the first circular
-              </Button>
-            </Can>
-          }
-        />
-      ) : (
-        <Stagger className="space-y-3 max-w-3xl">
-          {circulars.map((c) => (
-            <StaggerItem key={c.id}>
-              <Card padded={false} className="p-4">
-                <div className="flex flex-wrap items-center gap-2 mb-2 text-[11px]">
-                  <Badge variant={c.category === "CIRCULAR" ? "gold" : "neutral"}>{CATEGORY_LABEL[c.category]}</Badge>
-                  <Badge variant="info">{AUDIENCE_LABEL[c.audience]}</Badge>
-                  {c.pinned && (
-                    <Badge variant="ink" className="inline-flex items-center gap-1">
-                      <Pin className="size-3" aria-hidden /> Pinned
-                    </Badge>
-                  )}
-                  <span className="ml-auto text-faint tnum">{formatDate(c.publishedAt)}</span>
-                </div>
-                <h3 className="font-display font-semibold text-[14px] text-ink leading-snug">{c.title}</h3>
-                <p className="text-[13px] text-muted leading-relaxed mt-1 whitespace-pre-line">{c.body}</p>
-                <p className="text-[11px] text-faint mt-2.5">— {c.authorName}</p>
-              </Card>
-            </StaggerItem>
-          ))}
-        </Stagger>
-      )}
+
+        {/* Side rail */}
+        <aside className="space-y-4">
+          {circulars.some((c) => c.pinned) && (
+            <Card>
+              <CardHeader title="Pinned circulars" description="Held at the top of every school's feed." />
+              <ul className="space-y-2.5">
+                {circulars.filter((c) => c.pinned).map((c) => (
+                  <li key={c.id} className="flex items-start gap-2.5">
+                    <Pin className="size-3.5 text-gold-deep shrink-0 mt-0.5" aria-hidden />
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-medium text-ink leading-snug">{c.title}</p>
+                      <p className="text-[11.5px] text-muted tnum mt-0.5">{formatDate(c.publishedAt)} · {AUDIENCE_LABEL[c.audience]}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
+          <Card>
+            <CardHeader title="Publishing guidelines" />
+            <ul className="space-y-2 text-[12.5px] text-muted">
+              <li className="flex items-start gap-2.5">
+                <CheckCircle2 className="size-4 text-primary-deep shrink-0 mt-0.5" aria-hidden />
+                Circulars go to every school on the platform the moment you publish — there is no draft state.
+              </li>
+              <li className="flex items-start gap-2.5">
+                <CheckCircle2 className="size-4 text-primary-deep shrink-0 mt-0.5" aria-hidden />
+                Pick <span className="font-medium text-ink">Schools</span> for administrative notices; reserve{" "}
+                <span className="font-medium text-ink">Everyone</span> for news parents and teachers must see.
+              </li>
+              <li className="flex items-start gap-2.5">
+                <CheckCircle2 className="size-4 text-primary-deep shrink-0 mt-0.5" aria-hidden />
+                Pin only time-critical circulars — pinned items stay first in every feed until unpinned.
+              </li>
+            </ul>
+          </Card>
+        </aside>
+      </div>
 
       <Modal
         open={composeOpen}

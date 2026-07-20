@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Briefcase, ChevronRight, FileText } from "lucide-react";
+import { ArrowRight, Briefcase, ChevronRight, FileText, UserRound } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PageTransition, Stagger, StaggerItem } from "@/components/motion";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
+import { Card, CardHeader } from "@/components/ui/Card";
 import { Drawer } from "@/components/ui/Drawer";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CardSkeleton } from "@/components/ui/Skeleton";
@@ -33,6 +33,10 @@ export default function MyApplicationsPage() {
     enabled: Boolean(user),
   });
 
+  const stageCounts = (Object.keys(JOB_STAGE) as JobApplicationStage[])
+    .map((stage) => ({ stage, count: applications.filter((a) => a.stage === stage).length }))
+    .filter((s) => s.count > 0);
+
   return (
     <PageTransition>
       <PageHeader
@@ -45,47 +49,100 @@ export default function MyApplicationsPage() {
         }
       />
 
-      {isLoading ? (
-        <div className="space-y-3 max-w-3xl"><CardSkeleton /><CardSkeleton /></div>
-      ) : applications.length === 0 ? (
-        <EmptyState
-          icon={Briefcase}
-          title="No applications yet"
-          description="Find an open position on the job board and send your first application."
-          action={
-            <Link to="/applicant/jobs">
-              <Button iconRight={<ArrowRight className="size-4" />}>Open the job board</Button>
-            </Link>
-          }
-        />
-      ) : (
-        <Card padded={false} className="max-w-3xl overflow-hidden">
-          <Stagger className="divide-y divide-line">
-            {applications.map((app) => {
-              const meta = JOB_STAGE[app.stage];
-              return (
-                <StaggerItem key={app.id}>
-                  <button
-                    type="button"
-                    onClick={() => setSelected(app)}
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-paper/60"
-                    aria-label={`View application — ${app.vacancyTitle}`}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[13.5px] font-medium text-ink truncate">{app.vacancyTitle}</p>
-                      <p className="text-[12px] text-muted truncate mt-0.5">
-                        {app.schoolName} — applied {formatDate(app.appliedAt)}
-                      </p>
-                    </div>
-                    <Badge variant={meta.variant} dot>{meta.label}</Badge>
-                    <ChevronRight className="size-4 shrink-0 text-faint" aria-hidden />
-                  </button>
-                </StaggerItem>
-              );
-            })}
-          </Stagger>
-        </Card>
-      )}
+      <div className="grid gap-4 lg:grid-cols-[1fr_310px] items-start">
+        {/* Applications */}
+        <div className="min-w-0">
+          {isLoading ? (
+            <div className="space-y-3"><CardSkeleton /><CardSkeleton /></div>
+          ) : applications.length === 0 ? (
+            <Card padded={false}>
+              <EmptyState
+                icon={Briefcase}
+                title="No applications yet"
+                description="Find an open position on the job board and send your first application."
+                action={
+                  <Link to="/applicant/jobs">
+                    <Button iconRight={<ArrowRight className="size-4" />}>Open the job board</Button>
+                  </Link>
+                }
+              />
+            </Card>
+          ) : (
+            <Card padded={false} className="overflow-hidden">
+              <Stagger className="divide-y divide-line">
+                {applications.map((app) => {
+                  const meta = JOB_STAGE[app.stage];
+                  return (
+                    <StaggerItem key={app.id}>
+                      <button
+                        type="button"
+                        onClick={() => setSelected(app)}
+                        className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-paper/60"
+                        aria-label={`View application — ${app.vacancyTitle}`}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[13.5px] font-medium text-ink truncate">{app.vacancyTitle}</p>
+                          <p className="text-[12px] text-muted truncate mt-0.5">
+                            {app.schoolName} — applied {formatDate(app.appliedAt)}
+                          </p>
+                        </div>
+                        <Badge variant={meta.variant} dot>{meta.label}</Badge>
+                        <ChevronRight className="size-4 shrink-0 text-faint" aria-hidden />
+                      </button>
+                    </StaggerItem>
+                  );
+                })}
+              </Stagger>
+            </Card>
+          )}
+        </div>
+
+        {/* Side rail */}
+        <aside className="space-y-4">
+          {stageCounts.length > 0 && (
+            <Card>
+              <CardHeader title="Where you stand" description="Your applications by pipeline stage." />
+              <ul className="space-y-2">
+                {stageCounts.map(({ stage, count }) => (
+                  <li key={stage} className="flex items-center justify-between gap-3">
+                    <Badge variant={JOB_STAGE[stage].variant} dot>{JOB_STAGE[stage].label}</Badge>
+                    <span className="text-[13px] font-semibold text-ink tnum">{count}</span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
+          <Card>
+            <CardHeader title="How hiring works" />
+            <Timeline
+              events={[
+                { title: "Applied", description: "Your cover letter and CV land with the school's hiring team.", tone: "success" },
+                { title: "Shortlisted", description: "The school marks you as a strong match for the role.", tone: "warning" },
+                { title: "Interview", description: "The school contacts you to arrange a conversation.", tone: "warning" },
+                { title: "Offer", description: "An offer reserves the position — the school follows up with next steps.", tone: "default" },
+              ]}
+            />
+          </Card>
+
+          <Card className="bg-primary-soft/40 border-primary/25">
+            <div className="flex items-start gap-3">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-white">
+                <UserRound className="size-4" aria-hidden />
+              </span>
+              <div>
+                <p className="text-[13px] font-semibold text-ink">Boost your profile</p>
+                <p className="text-[12px] text-muted mt-0.5 mb-2.5">
+                  A complete profile with an up-to-date CV is what schools see first when they review you.
+                </p>
+                <Link to="/applicant/profile">
+                  <Button size="sm" variant="secondary">Update profile & CV</Button>
+                </Link>
+              </div>
+            </div>
+          </Card>
+        </aside>
+      </div>
 
       <Drawer
         open={Boolean(selected)}

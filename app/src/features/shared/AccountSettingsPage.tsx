@@ -26,7 +26,7 @@ export default function AccountSettingsPage() {
   return (
     <PageTransition>
       <PageHeader title="Settings" description="Your profile, security and notification preferences." />
-      <div className="grid lg:grid-cols-2 gap-4 max-w-4xl items-start">
+      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
         <Card>
           <CardHeader title="Profile" description="How you appear across REDEP." />
           <div className="space-y-3.5">
@@ -44,7 +44,7 @@ export default function AccountSettingsPage() {
           </div>
         </Card>
 
-        <div className="space-y-4">
+        <div className="space-y-4 xl:contents">
           <Card>
             <CardHeader title="Notifications" description="Where REDEP reaches you." />
             <div className="divide-y divide-line">

@@ -1,21 +1,22 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, CheckCircle2, Send } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, FileCheck2, MapPin, Send, Star } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PageTransition } from "@/components/motion";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
+import { Card, CardHeader } from "@/components/ui/Card";
 import { FileDrop } from "@/components/ui/FileDrop";
 import { Input, Select } from "@/components/ui/Input";
 import { Stepper } from "@/components/ui/Stepper";
 import { Badge } from "@/components/ui/Badge";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { schoolService } from "@/services/schoolService";
 import { admissionService } from "@/services/admissionService";
 import { toast } from "@/stores/uiStore";
-import { LEVEL_LABEL } from "@/lib/status";
-import { fullName } from "@/lib/format";
+import { LEVEL_LABEL, SCHOOL_TYPE_LABEL } from "@/lib/status";
+import { formatNumber, fullName } from "@/lib/format";
 import type { Gender, SchoolLevel } from "@/types";
 
 const STEPS = ["Child details", "Documents", "Review & submit"];
@@ -96,7 +97,8 @@ export default function ApplyPage() {
         description="Your application goes straight to the school's admissions office."
       />
 
-      <Card className="max-w-xl">
+      <div className="grid lg:grid-cols-[1fr_310px] gap-4 items-start">
+      <Card className="max-w-2xl">
         <Stepper steps={STEPS} current={step} className="mb-6" />
 
         {step === 0 && (
@@ -184,6 +186,63 @@ export default function ApplyPage() {
           )}
         </div>
       </Card>
+
+      {/* Side rail */}
+      <aside className="space-y-4">
+        <Card>
+          <CardHeader title="You're applying to" />
+          {school ? (
+            <div className="space-y-2 text-[12.5px]">
+              <p className="font-display font-semibold text-[14px] text-ink">{school.name}</p>
+              <p className="flex items-center gap-1.5 text-muted">
+                <MapPin className="size-3.5 shrink-0" aria-hidden /> {school.district} · {school.sector}
+              </p>
+              <p className="text-muted">{SCHOOL_TYPE_LABEL[school.type]} school</p>
+              <p className="flex items-center gap-1.5 font-semibold text-gold-deep tnum">
+                <Star className="size-3.5 fill-gold text-gold" aria-hidden /> {school.satisfactionScore.toFixed(1)} parent satisfaction
+              </p>
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {school.levels.map((l) => (
+                  <Badge key={l} variant={child.levelApplied === l ? "success" : "neutral"}>
+                    {LEVEL_LABEL[l]}
+                  </Badge>
+                ))}
+              </div>
+              <div className="flex items-center justify-between border-t border-line mt-2.5 pt-2.5">
+                <span className="text-muted">Seats available (school-wide)</span>
+                <span className="font-semibold text-ink tnum">
+                  {formatNumber(Math.max(0, school.capacity - school.enrolled))}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-3 w-28" />
+              <Skeleton className="h-3 w-32" />
+            </div>
+          )}
+        </Card>
+
+        <Card>
+          <CardHeader title="Documents you'll need" />
+          <ul className="space-y-2">
+            {[
+              ["Birth certificate", "Required — PDF or photo, attached in step 2"],
+              ["Previous academic records", "Optional for Nursery/P1 — recommended for transfers"],
+            ].map(([doc, hint]) => (
+              <li key={doc} className="flex items-start gap-2.5">
+                <FileCheck2 className="size-4 text-primary-deep shrink-0 mt-0.5" aria-hidden />
+                <div>
+                  <p className="text-[13px] font-medium text-ink leading-snug">{doc}</p>
+                  <p className="text-[11.5px] text-muted">{hint}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      </aside>
+      </div>
     </PageTransition>
   );
 }

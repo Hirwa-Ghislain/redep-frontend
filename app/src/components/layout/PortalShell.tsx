@@ -451,7 +451,7 @@ export function PortalShell({ nav, portalLabel, contextChip }: PortalShellProps)
             />
           </div>
         </header>
-        <main className="flex-1 px-4 sm:px-6 py-5 max-w-[1320px] w-full mx-auto">
+        <main className="flex-1 px-4 sm:px-6 py-5 max-w-[1460px] w-full mx-auto">
           <Outlet />
         </main>
       </div>

@@ -61,7 +61,7 @@ export default function TransfersPage() {
         description="Request a transfer or resignation; the school confirms and your child's records move to history."
       />
 
-      <div className="grid lg:grid-cols-2 gap-4 items-start max-w-5xl">
+      <div className="grid lg:grid-cols-[380px_1fr] gap-4 items-start">
         <Card>
           <CardHeader title="New request" description="The school reviews every departure request." />
           <div className="space-y-3.5">
@@ -100,31 +100,50 @@ export default function TransfersPage() {
           </div>
         </Card>
 
-        <Card padded={false}>
-          <CardHeader className="px-5 pt-4" title="Request history" />
-          {isLoading ? null : requests.length === 0 ? (
-            <EmptyState icon={ArrowLeftRight} title="No requests" description="Transfer and exit requests appear here." className="py-10" />
-          ) : (
-            <div className="divide-y divide-line">
-              {requests.map((r) => {
-                const meta = TRANSFER_STATUS[r.status];
-                return (
-                  <div key={r.id} className="px-5 py-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-[13px] font-medium text-ink">{r.studentName}</p>
+        <div className="space-y-4 min-w-0">
+          <Card padded={false}>
+            <CardHeader className="px-5 pt-4" title="Request history" description="Every transfer and exit request, newest first." />
+            {isLoading ? null : requests.length === 0 ? (
+              <EmptyState icon={ArrowLeftRight} title="No requests" description="Transfer and exit requests appear here." className="py-10" />
+            ) : (
+              <div className="divide-y divide-line">
+                {requests.map((r) => {
+                  const meta = TRANSFER_STATUS[r.status];
+                  return (
+                    <div key={r.id} className="flex flex-wrap items-start gap-x-4 gap-y-1 px-5 py-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[13px] font-medium text-ink">{r.studentName}</p>
+                        <p className="text-[12px] text-muted mt-0.5">
+                          {r.type === "TRANSFER" ? "Transfer" : "Resignation"} · {r.schoolName} · requested {formatDate(r.requestedAt)}
+                          {r.resolvedAt ? ` · resolved ${formatDate(r.resolvedAt)}` : ""}
+                        </p>
+                        <p className="text-[12.5px] text-ink mt-1">“{r.reason}”</p>
+                      </div>
                       <Badge variant={meta.variant} dot>{meta.label}</Badge>
                     </div>
-                    <p className="text-[12px] text-muted mt-0.5">
-                      {r.type === "TRANSFER" ? "Transfer" : "Resignation"} · {r.schoolName} · requested {formatDate(r.requestedAt)}
-                      {r.resolvedAt ? ` · resolved ${formatDate(r.resolvedAt)}` : ""}
-                    </p>
-                    <p className="text-[12.5px] text-ink mt-1">“{r.reason}”</p>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </Card>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+
+          <Card>
+            <CardHeader title="What happens after a request?" />
+            <ol className="grid gap-3 sm:grid-cols-3">
+              {[
+                ["School confirms", "The current school reviews and confirms the departure."],
+                ["Seat released", "The class seat frees up instantly for another family."],
+                ["History kept", "Records move to Former students — receipts and grades stay accessible to you."],
+              ].map(([title, body], i) => (
+                <li key={title} className="rounded-xl border border-line bg-paper/60 p-3.5">
+                  <p className="font-display text-[18px] font-bold text-primary/40 tnum leading-none">{i + 1}</p>
+                  <p className="text-[13px] font-semibold text-ink mt-1.5">{title}</p>
+                  <p className="text-[12px] text-muted mt-0.5 leading-relaxed">{body}</p>
+                </li>
+              ))}
+            </ol>
+          </Card>
+        </div>
       </div>
     </PageTransition>
   );
