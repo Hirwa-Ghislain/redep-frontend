@@ -1,0 +1,133 @@
+@import "tailwindcss";
+
+@theme {
+  /* ---- REDEP brand tokens (see /PLAN.md §1) ---- */
+  --color-ink: #0f1712;
+  --color-ink-soft: #1a231d;
+  --color-ink-mist: #29342c;
+  --color-paper: #f4f4ef;
+  --color-surface: #ffffff;
+  --color-line: #e7e5dc;
+  --color-line-strong: #d5d2c5;
+  --color-muted: #5b655d;
+  --color-faint: #8f978f;
+
+  /* Brand-panel color (sidebar, banners, auth accents) — same dark ink as before */
+  --color-pine: #0f1712;
+  --color-pine-deep: #080d0a;
+  --color-pine-mist: #29342c;
+
+  --color-primary: #1b7a53;
+  --color-primary-deep: #0e5138;
+  --color-primary-soft: #e3f0e9;
+  --color-gold: #e7a917;
+  --color-gold-deep: #b97f10;
+  --color-gold-soft: #fbf3dc;
+  --color-sky: #2c99ce;
+  --color-sky-deep: #1e6f97;
+  --color-sky-soft: #e3f1f8;
+  --color-clay: #c4532e;
+  --color-clay-deep: #9a3f21;
+  --color-clay-soft: #f9e9e2;
+
+  --color-success: #1b7a53;
+  --color-warning: #b97f10;
+  --color-danger: #c4532e;
+  --color-info: #2c99ce;
+
+  --font-display: "Space Grotesk Variable", "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --radius-ctl: 10px;
+  --radius-card: 16px;
+
+  --shadow-card: 0 1px 2px rgb(15 23 18 / 0.05), 0 1px 3px rgb(15 23 18 / 0.04);
+  --shadow-pop: 0 4px 6px rgb(15 23 18 / 0.04), 0 14px 36px rgb(15 23 18 / 0.13);
+
+  --animate-fade-up: fade-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--color-line);
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.015em;
+  }
+
+  ::selection {
+    background-color: var(--color-gold);
+    color: var(--color-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-line-strong);
+    border-radius: 999px;
+    border: 2px solid var(--color-paper);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-faint);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer utilities {
+  /* Tabular numbers for stats, money, tables */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+  /* Sidebar (dark pine) scrollbar variant */
+  .scroll-dark::-webkit-scrollbar-thumb {
+    background: var(--color-pine-mist);
+    border-color: var(--color-pine);
+  }
+}

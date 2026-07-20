@@ -1,0 +1,92 @@
+import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import { BadgeCheck, ShieldCheck, Armchair } from "lucide-react";
+import { Logo } from "./Logo";
+
+/**
+ * Auth layout v2 — centered card on a textured canvas (replaces the old
+ * split-screen). Pages render their form inside the card; pages that pass
+ * `aside` (school onboarding) get a dark info panel beside the card on lg+.
+ */
+export function AuthLayout({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
+  return (
+    <div className="relative min-h-dvh flex flex-col bg-paper overflow-hidden">
+      {/* dotted canvas, fading toward the bottom */}
+      <div
+        className="absolute inset-x-0 top-0 h-[480px] opacity-60 [mask-image:linear-gradient(to_bottom,black,transparent)]"
+        style={{
+          backgroundImage: "radial-gradient(circle, rgb(15 23 18 / 0.10) 1.2px, transparent 1.2px)",
+          backgroundSize: "24px 24px",
+        }}
+        aria-hidden
+      />
+
+      {/* header */}
+      <header className="relative flex justify-center pt-10 pb-8">
+        <Link to="/login" aria-label="REDEP home">
+          <Logo />
+        </Link>
+      </header>
+
+      {/* content */}
+      <main className="relative flex-1 w-full px-5 pb-10">
+        <div
+          className={
+            aside
+              ? "mx-auto grid w-full max-w-4xl items-start gap-5 lg:grid-cols-[1fr_340px]"
+              : "mx-auto w-full max-w-[440px]"
+          }
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 16, scale: 0.99 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+            className="rounded-2xl border border-line bg-surface p-6 sm:p-8 shadow-(--shadow-pop)"
+          >
+            {children}
+          </motion.div>
+
+          {aside && (
+            <motion.aside
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
+              className="relative hidden lg:block overflow-hidden rounded-2xl bg-pine p-7"
+            >
+              <div
+                className="absolute inset-0 opacity-[0.12]"
+                style={{
+                  backgroundImage: "radial-gradient(circle, #FFFFFF 1.1px, transparent 1.1px)",
+                  backgroundSize: "24px 24px",
+                }}
+                aria-hidden
+              />
+              <div className="relative">{aside}</div>
+            </motion.aside>
+          )}
+        </div>
+
+        {/* trust strip */}
+        <ul className="relative mx-auto mt-7 flex max-w-lg flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[12px] text-muted">
+          <li className="inline-flex items-center gap-1.5">
+            <ShieldCheck className="size-3.5 text-primary" /> Role-based access
+          </li>
+          <li className="inline-flex items-center gap-1.5">
+            <BadgeCheck className="size-3.5 text-primary" /> Verifiable receipts
+          </li>
+          <li className="inline-flex items-center gap-1.5">
+            <Armchair className="size-3.5 text-primary" /> Live seat counters
+          </li>
+        </ul>
+      </main>
+
+      {/* footer */}
+      <footer className="relative pb-8 text-center">
+        <p className="text-[12px] text-faint">
+          © 2026 REDEP — Rwanda Education Digital Ecosystem Platform · Demo environment, payments simulated
+        </p>
+      </footer>
+    </div>
+  );
+}

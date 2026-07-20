@@ -1,0 +1,110 @@
+@import "tailwindcss";
+
+@theme {
+  /* Same brand tokens as the platform app */
+  --color-ink: #101915;
+  --color-ink-soft: #1c2620;
+  --color-ink-mist: #2a362f;
+  --color-paper: #f7f5f0;
+  --color-surface: #ffffff;
+  --color-line: #e4e0d5;
+  --color-line-strong: #cfc9b8;
+  --color-muted: #5c675f;
+  --color-faint: #8b948d;
+
+  --color-primary: #1b7a53;
+  --color-primary-deep: #0e5138;
+  --color-primary-soft: #e3f0e9;
+  --color-gold: #e7a917;
+  --color-gold-deep: #b97f10;
+  --color-gold-soft: #fbf3dc;
+  --color-sky: #2c99ce;
+  --color-sky-deep: #1e6f97;
+  --color-sky-soft: #e3f1f8;
+  --color-clay: #c4532e;
+  --color-clay-soft: #f9e9e2;
+
+  --font-display: "Space Grotesk Variable", "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --radius-card: 18px;
+  --shadow-card: 0 1px 2px rgb(16 25 21 / 0.04), 0 4px 16px rgb(16 25 21 / 0.05);
+  --shadow-pop: 0 4px 6px rgb(16 25 21 / 0.05), 0 12px 32px rgb(16 25 21 / 0.12);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-line);
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    line-height: 1.6;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+
+  ::selection {
+    background-color: var(--color-gold);
+    color: var(--color-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+@layer utilities {
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Scroll-reveal — elements start hidden, .is-visible flips them in.
+     The IntersectionObserver only starts after `app:splash-done`. */
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition:
+      opacity 0.65s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+    transition-delay: var(--reveal-delay, 0ms);
+  }
+  .reveal.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* Dot-grid texture used on ink panels (pattern, not a color gradient) */
+  .dot-texture {
+    background-image: radial-gradient(circle, rgb(247 245 240 / 0.12) 1.2px, transparent 1.2px);
+    background-size: 26px 26px;
+  }
+  .dot-texture-ink {
+    background-image: radial-gradient(circle, rgb(16 25 21 / 0.08) 1.2px, transparent 1.2px);
+    background-size: 26px 26px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    .reveal {
+      transition: none;
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
