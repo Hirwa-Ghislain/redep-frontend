@@ -1,0 +1,52 @@
+name: Build and publish images
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - dir: app
+            image: e-shuri-app
+            build_args: |
+              VITE_USE_MOCKS=false
+              VITE_API_URL=https://api.eshuri.185-137-122-54.sslip.io/api/v1
+          - dir: website
+            image: e-shuri-website
+            build_args: |
+              VITE_APP_URL=https://app.eshuri.185-137-122-54.sslip.io
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute lowercase image owner
+        id: vars
+        run: echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.dir }}
+          push: true
+          build-args: ${{ matrix.build_args }}
+          tags: |
+            ghcr.io/${{ steps.vars.outputs.owner }}/${{ matrix.image }}:latest
+            ghcr.io/${{ steps.vars.outputs.owner }}/${{ matrix.image }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
