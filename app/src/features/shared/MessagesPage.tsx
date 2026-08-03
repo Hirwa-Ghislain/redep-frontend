@@ -7,18 +7,41 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { UnderDevelopment } from "@/components/ui/UnderDevelopment";
 import { useAuth } from "@/hooks/useAuth";
 import { commsService } from "@/services/commsService";
 import { fullName, timeAgo, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { USE_MOCKS } from "@/lib/api/client";
 
 /**
  * Shared threaded-messaging screen (parent ⇄ teacher ⇄ school office).
  * Thread scope depends on the active role: school users see the school inbox,
  * everyone else sees threads they participate in.
+ *
+ * The real messaging backend only supports parent ⇄ school-administration threads
+ * (see messaging.service.ts) — a TEACHER isn't a party to any thread there, so in live
+ * mode the teacher portal gets an honest "not available" state instead of an empty inbox.
  */
 export default function MessagesPage() {
   const { user, role } = useAuth();
+
+  if (!USE_MOCKS && role === "TEACHER") {
+    return (
+      <PageTransition>
+        <PageHeader title="Messages" description="Direct conversations — every thread stays linked to a student." />
+        <UnderDevelopment
+          title="Direct messages"
+          description="Teacher messaging isn't available yet — parents currently message the school office directly."
+        />
+      </PageTransition>
+    );
+  }
+
+  return <MessagesThreadView user={user} role={role} />;
+}
+
+function MessagesThreadView({ user, role }: { user: ReturnType<typeof useAuth>["user"]; role: ReturnType<typeof useAuth>["role"] }) {
   const qc = useQueryClient();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");

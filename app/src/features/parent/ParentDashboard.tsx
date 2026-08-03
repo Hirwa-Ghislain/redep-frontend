@@ -23,8 +23,9 @@ import { admissionService } from "@/services/admissionService";
 import { commsService } from "@/services/commsService";
 import { feeService } from "@/services/feeService";
 import { studentService } from "@/services/studentService";
+import { USE_MOCKS } from "@/lib/api/client";
 import { formatDate, formatRWF, fullName } from "@/lib/format";
-import { ADMISSION_STATUS } from "@/lib/status";
+import { ADMISSION_STATUS, BACKEND_APPLICATION_STATUS } from "@/lib/status";
 
 export default function ParentDashboard() {
   const { user } = useAuth();
@@ -36,22 +37,27 @@ export default function ParentDashboard() {
     enabled: Boolean(user),
   });
 
-  const { data: term } = useQuery({ queryKey: ["current-term"], queryFn: () => academicService.currentTerm() });
+  // The real backend has no academic-term concept — this only applies in mock mode.
+  const { data: term } = useQuery({ queryKey: ["current-term"], queryFn: () => academicService.currentTerm(), enabled: USE_MOCKS });
 
   const enrolled = children.filter((c) => c.status === "ENROLLED");
 
   const { data: totalDue } = useQuery({
     queryKey: ["parent-due", user?.id, term?.id, enrolled.length],
     queryFn: async () => {
-      const all = await Promise.all(enrolled.map((c) => feeService.balances(c.id, term!.id)));
-      return all.flat().reduce((sum, b) => sum + b.due, 0);
+      if (USE_MOCKS) {
+        const all = await Promise.all(enrolled.map((c) => feeService.balances(c.id, term!.id)));
+        return all.flat().reduce((sum, b) => sum + b.due, 0);
+      }
+      const withBalances = await Promise.all(enrolled.map((c) => studentService.get(c.id)));
+      return withBalances.reduce((sum, c) => sum + (c.outstandingBalance ?? 0), 0);
     },
-    enabled: Boolean(term) && enrolled.length > 0,
+    enabled: USE_MOCKS ? Boolean(term) && enrolled.length > 0 : enrolled.length > 0,
   });
 
   const { data: applications = [] } = useQuery({
     queryKey: ["applications", user?.id],
-    queryFn: () => admissionService.listByParent(user!.id),
+    queryFn: () => admissionService.listByParent(user!.id, user ? fullName(user) : ""),
     enabled: Boolean(user),
   });
 
@@ -168,7 +174,7 @@ export default function ParentDashboard() {
                 />
                 <div className="divide-y divide-line">
                   {openApplications.slice(0, 3).map((app) => {
-                    const meta = ADMISSION_STATUS[app.status];
+                    const meta = app.backendStatus ? BACKEND_APPLICATION_STATUS[app.backendStatus] : ADMISSION_STATUS[app.status];
                     return (
                       <div key={app.id} className="flex items-center gap-3 px-5 py-2.5">
                         <FileText className="size-4 text-muted shrink-0" />
@@ -176,7 +182,7 @@ export default function ParentDashboard() {
                           <p className="text-[13px] font-medium text-ink">
                             {app.childFirstName} {app.childLastName}
                           </p>
-                          <p className="text-[12px] text-muted">Submitted {formatDate(app.submittedAt)}</p>
+                          <p className="text-[12px] text-muted">{app.submittedAt ? `Submitted ${formatDate(app.submittedAt)}` : "Just submitted"}</p>
                         </div>
                         <Badge variant={meta.variant} dot>{meta.label}</Badge>
                       </div>

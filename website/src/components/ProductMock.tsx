@@ -1,5 +1,5 @@
 /**
- * Coded product mockup — a miniature replica of the REDEP school dashboard,
+ * Coded product mockup — a miniature replica of the E-SHURI school dashboard,
  * rendered in a browser frame. Pure HTML/CSS (no images) so it stays crisp,
  * themable and fast. Decorative: aria-hidden, unselectable.
  */
@@ -34,7 +34,7 @@ export function ProductMock({ className = "" }: { className?: string }) {
             <span className="size-2.5 rounded-full bg-primary/70" />
           </span>
           <span className="mx-auto flex items-center gap-1.5 rounded-md border border-line bg-surface px-8 py-1 text-[10px] text-faint">
-            <span className="size-2 rounded-full bg-primary/60" /> redep.rw/school
+            <span className="size-2 rounded-full bg-primary/60" /> eshuri.rw/school
           </span>
         </div>
 

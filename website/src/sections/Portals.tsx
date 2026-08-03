@@ -56,7 +56,7 @@ export function Portals() {
             Everyone signs in at the same door. Their role decides what's behind it.
           </h2>
           <p className="mt-4 max-w-2xl text-[15.5px] text-paper/60">
-            REDEP is one platform with role-based access — like the best SaaS products. A parent, a
+            E-SHURI is one platform with role-based access — like the best SaaS products. A parent, a
             school accountant and a ministry analyst each get a portal shaped exactly to their job,
             with permissions enforced everywhere.
           </p>

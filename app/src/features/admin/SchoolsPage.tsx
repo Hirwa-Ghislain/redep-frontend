@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   FileText,
   Inbox,
+  Info,
   Mail,
   MoreHorizontal,
   Pause,
@@ -26,12 +27,13 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
 import { CardSkeleton } from "@/components/ui/Skeleton";
 import { Tabs } from "@/components/ui/Tabs";
+import { USE_MOCKS } from "@/lib/api/client";
 import { useAuth } from "@/hooks/useAuth";
-import { adminService } from "@/services/adminService";
+import { adminService, type AdminSchoolRow } from "@/services/adminService";
 import { toast } from "@/stores/uiStore";
 import { formatDate, formatNumber, fullName } from "@/lib/format";
 import { DOC_STATUS, ONBOARDING_STATUS, SCHOOL_STATUS, SCHOOL_TYPE_LABEL } from "@/lib/status";
-import type { School, SchoolOnboardingRequest } from "@/types";
+import type { SchoolOnboardingRequest } from "@/types";
 
 type ResolveAction = "VERIFYING" | "APPROVED" | "REJECTED";
 
@@ -52,11 +54,12 @@ export default function SchoolsPage() {
 
   const [tab, setTab] = useState("onboarding");
   const [confirm, setConfirm] = useState<{ request: SchoolOnboardingRequest; action: "APPROVED" | "REJECTED" } | null>(null);
-  const [suspendTarget, setSuspendTarget] = useState<School | null>(null);
+  const [suspendTarget, setSuspendTarget] = useState<AdminSchoolRow | null>(null);
 
   const { data: requests = [], isLoading: loadingRequests } = useQuery({
     queryKey: ["onboarding"],
     queryFn: () => adminService.onboardingRequests(),
+    enabled: USE_MOCKS,
   });
 
   const { data: schools = [], isLoading: loadingSchools } = useQuery({
@@ -83,7 +86,7 @@ export default function SchoolsPage() {
   });
 
   const setStatus = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: School["status"] }) =>
+    mutationFn: ({ id, status }: { id: string; status: "ACTIVE" | "SUSPENDED" }) =>
       adminService.setSchoolStatus(id, status, actor),
     onSuccess: (school) => {
       setSuspendTarget(null);
@@ -106,27 +109,44 @@ export default function SchoolsPage() {
     <PageTransition>
       <PageHeader
         title="Schools"
-        description="Verify new school registrations and manage every school on the platform."
+        description={
+          USE_MOCKS
+            ? "Verify new school registrations and manage every school on the platform."
+            : "Manage every school on the platform — activate, suspend, and review contacts."
+        }
       />
 
-      <Tabs
-        className="mb-5"
-        value={tab}
-        onChange={setTab}
-        items={[
-          { value: "onboarding", label: "Onboarding requests", count: openCount, icon: <Inbox className="size-4" /> },
-          { value: "schools", label: "All schools", count: schools.length, icon: <Building2 className="size-4" /> },
-        ]}
-      />
+      {!USE_MOCKS && (
+        <div className="mb-5 flex items-start gap-2.5 rounded-(--radius-card) border border-line bg-paper/70 px-4 py-3">
+          <Info className="size-4 text-primary-deep shrink-0 mt-0.5" aria-hidden />
+          <p className="text-[12.5px] text-muted">
+            There is no onboarding-review queue here: a NESA-accredited school administrator registers their own school
+            (self-service) and it goes live immediately once NESA verification passes — there's no admin approval step to
+            work through. This page is for ongoing status management of schools already on the platform.
+          </p>
+        </div>
+      )}
 
-      {tab === "onboarding" ? (
+      {USE_MOCKS && (
+        <Tabs
+          className="mb-5"
+          value={tab}
+          onChange={setTab}
+          items={[
+            { value: "onboarding", label: "Onboarding requests", count: openCount, icon: <Inbox className="size-4" /> },
+            { value: "schools", label: "All schools", count: schools.length, icon: <Building2 className="size-4" /> },
+          ]}
+        />
+      )}
+
+      {USE_MOCKS && tab === "onboarding" ? (
         loadingRequests ? (
           <div className="grid md:grid-cols-2 gap-3.5"><CardSkeleton /><CardSkeleton /></div>
         ) : requests.length === 0 ? (
           <EmptyState
             icon={Inbox}
             title="No onboarding requests"
-            description="When a school applies to join REDEP, its verification request appears here."
+            description="When a school applies to join E-SHURI, its verification request appears here."
           />
         ) : (
           <Stagger className="grid md:grid-cols-2 gap-3.5 items-stretch">
@@ -232,7 +252,7 @@ export default function SchoolsPage() {
           </Stagger>
         )
       ) : (
-        <DataTable<School>
+        <DataTable<AdminSchoolRow>
           loading={loadingSchools}
           columns={[
             {
@@ -240,16 +260,31 @@ export default function SchoolsPage() {
               header: "School",
               render: (s) => <span className="font-medium text-ink">{s.name}</span>,
             },
-            { key: "code", header: "Code", render: (s) => <span className="tnum text-muted">{s.code}</span> },
+            {
+              key: "contact",
+              header: "Administrator / contact",
+              render: (s) => (
+                <span className="text-muted">
+                  {s.administratorName && <span className="text-ink font-medium">{s.administratorName} · </span>}
+                  {s.contactEmail}
+                </span>
+              ),
+            },
             { key: "district", header: "District" },
-            { key: "type", header: "Type", render: (s) => SCHOOL_TYPE_LABEL[s.type] },
+            {
+              key: "type",
+              header: "Type",
+              render: (s) => (s.type ? SCHOOL_TYPE_LABEL[s.type] : "—"),
+            },
             {
               key: "enrolled",
               header: "Enrolled / capacity",
               align: "right",
               render: (s) => (
                 <span className="tnum">
-                  {formatNumber(s.enrolled)} / {formatNumber(s.capacity)}
+                  {s.enrolled !== undefined && s.capacity !== undefined
+                    ? `${formatNumber(s.enrolled)} / ${formatNumber(s.capacity)}`
+                    : "—"}
                 </span>
               ),
             },

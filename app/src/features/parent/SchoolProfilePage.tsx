@@ -12,9 +12,13 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { academicService } from "@/services/academicService";
 import { feeService } from "@/services/feeService";
 import { schoolService } from "@/services/schoolService";
+import { USE_MOCKS } from "@/lib/api/client";
 import { formatNumber, formatRWF } from "@/lib/format";
 import { FEE_CATEGORY_LABEL, LEVEL_LABEL, SCHOOL_TYPE_LABEL } from "@/lib/status";
-import type { FeeStructure, SchoolClass } from "@/types";
+import type { FeeStructure, PublicSchoolClass, SchoolClass } from "@/types";
+
+type ClassRow = SchoolClass | PublicSchoolClass;
+const rowEnrolled = (c: ClassRow) => ("enrolled" in c ? c.enrolled : c.currentEnrollment);
 
 export default function SchoolProfilePage() {
   const { schoolId = "" } = useParams();
@@ -23,16 +27,27 @@ export default function SchoolProfilePage() {
     queryKey: ["school", schoolId],
     queryFn: () => schoolService.get(schoolId),
   });
-  const { data: classes = [] } = useQuery({
+  // Mock mode: classes come from the dedicated (school-admin) endpoint. Real mode: the public
+  // school profile already embeds live class/seat availability — see `school.classes`.
+  const { data: mockClasses = [] } = useQuery({
     queryKey: ["school-classes", schoolId],
     queryFn: () => schoolService.classes(schoolId),
+    enabled: USE_MOCKS,
   });
-  const { data: term } = useQuery({ queryKey: ["current-term"], queryFn: () => academicService.currentTerm() });
-  const { data: fees = [] } = useQuery({
+  const classes: ClassRow[] = USE_MOCKS ? mockClasses : (school?.classes ?? []);
+
+  // Real backend fees have no academic-term concept — the term query/label only applies to mocks.
+  const { data: term } = useQuery({ queryKey: ["current-term"], queryFn: () => academicService.currentTerm(), enabled: USE_MOCKS });
+  const { data: mockFees = [] } = useQuery({
     queryKey: ["school-fees", schoolId, term?.id],
     queryFn: () => feeService.structures(schoolId, term!.id),
-    enabled: Boolean(term),
+    enabled: USE_MOCKS && Boolean(term),
   });
+  const fees: FeeStructure[] = USE_MOCKS
+    ? mockFees
+    : (school?.feeSummaries ?? []).map((f) => ({
+        id: f.id, schoolId, name: f.name, category: f.type, amount: f.amount, termId: "", optional: false,
+      }));
 
   if (isLoading || !school) {
     return (
@@ -76,14 +91,17 @@ export default function SchoolProfilePage() {
               <h1 className="font-display text-[24px] font-bold text-paper leading-tight">{school.name}</h1>
               {school.motto && <p className="text-[13px] text-gold italic mt-1">“{school.motto}”</p>}
               <p className="flex items-center gap-1.5 text-[12.5px] text-paper/60 mt-1.5">
-                <MapPin className="size-3.5" /> {school.district} district · {school.sector} sector · est. {school.foundedYear}
+                <MapPin className="size-3.5" /> {school.district} district · {school.sector} sector
+                {school.foundedYear > 0 ? ` · est. ${school.foundedYear}` : ""}
               </p>
             </div>
             <div className="flex flex-col items-end gap-2.5">
-              <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[13px] font-semibold text-gold tnum">
-                <Star className="size-3.5 fill-gold text-gold" /> {school.satisfactionScore.toFixed(1)}
-                <span className="text-[11px] font-normal text-paper/50">parent score</span>
-              </span>
+              {school.satisfactionScore !== undefined && (
+                <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[13px] font-semibold text-gold tnum">
+                  <Star className="size-3.5 fill-gold text-gold" /> {school.satisfactionScore.toFixed(1)}
+                  <span className="text-[11px] font-normal text-paper/50">parent score</span>
+                </span>
+              )}
               <Link to={`/parent/discover/${school.id}/apply`}>
                 <Button variant="gold">Apply for admission</Button>
               </Link>
@@ -98,60 +116,60 @@ export default function SchoolProfilePage() {
             <Card>
               <CardHeader title="About the school" />
               <p className="text-[14px] text-muted leading-relaxed">{school.description}</p>
-              <div className="flex flex-wrap gap-1.5 mt-4">
-                {school.facilities.map((f) => (
-                  <Badge key={f} variant="neutral">{f}</Badge>
-                ))}
-              </div>
+              {school.facilities.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-4">
+                  {school.facilities.map((f) => (
+                    <Badge key={f} variant="neutral">{f}</Badge>
+                  ))}
+                </div>
+              )}
             </Card>
           </FadeIn>
 
           <FadeIn delay={0.05}>
             <Card padded={false}>
-              <CardHeader className="px-5 pt-5" title="Classes & available seats" description="Live availability — REDEP prevents over-registration automatically." />
-              <DataTable<SchoolClass>
+              <CardHeader className="px-5 pt-5" title="Classes & available seats" description="Live availability — E-SHURI prevents over-registration automatically." />
+              <DataTable<ClassRow>
                 columns={[
                   { key: "name", header: "Class" },
-                  { key: "level", header: "Level", render: (c) => LEVEL_LABEL[c.level] },
                   {
                     key: "seats",
                     header: "Seats left",
                     align: "right",
                     render: (c) => (
-                      <span className={c.capacity - c.enrolled < 5 ? "text-clay-deep font-semibold tnum" : "font-semibold tnum text-primary-deep"}>
-                        {c.capacity - c.enrolled}
+                      <span className={c.capacity - rowEnrolled(c) < 5 ? "text-clay-deep font-semibold tnum" : "font-semibold tnum text-primary-deep"}>
+                        {c.capacity - rowEnrolled(c)}
                       </span>
                     ),
                   },
                   {
                     key: "fill",
                     header: "Occupancy",
-                    render: (c) => <ProgressBar value={c.capacity ? c.enrolled / c.capacity : 0} capacity className="w-28" label={`${c.name} occupancy`} />,
+                    render: (c) => <ProgressBar value={c.capacity ? rowEnrolled(c) / c.capacity : 0} capacity className="w-28" label={`${c.name} occupancy`} />,
                   },
                 ]}
                 rows={classes}
                 keyField={(c) => c.id}
+                empty="No classes published yet."
               />
             </Card>
           </FadeIn>
 
           <FadeIn delay={0.1}>
             <Card padded={false}>
-              <CardHeader className="px-5 pt-5" title={`Fees — ${term?.label ?? "current term"}`} />
+              <CardHeader className="px-5 pt-5" title={USE_MOCKS ? `Fees — ${term?.label ?? "current term"}` : "Fees"} />
               <DataTable<FeeStructure>
                 columns={[
                   { key: "name", header: "Fee" },
                   { key: "category", header: "Category", render: (f) => FEE_CATEGORY_LABEL[f.category] },
-                  { key: "level", header: "Applies to", render: (f) => (f.level ? LEVEL_LABEL[f.level] : "All levels") },
-                  {
-                    key: "optional",
-                    header: "Type",
-                    render: (f) => <Badge variant={f.optional ? "neutral" : "info"}>{f.optional ? "Optional" : "Required"}</Badge>,
-                  },
+                  ...(USE_MOCKS
+                    ? [{ key: "level", header: "Applies to", render: (f: FeeStructure) => (f.level ? LEVEL_LABEL[f.level] : "All levels") }]
+                    : []),
                   { key: "amount", header: "Amount", align: "right", render: (f) => <span className="tnum font-semibold">{formatRWF(f.amount)}</span> },
                 ]}
                 rows={fees}
                 keyField={(f) => f.id}
+                empty="No fees published yet."
               />
             </Card>
           </FadeIn>
@@ -167,19 +185,21 @@ export default function SchoolProfilePage() {
             </Card>
           </FadeIn>
 
-          <FadeIn delay={0.1}>
-            <Card padded={false} className="p-4">
-              <CardHeader className="mb-2.5" title="Achievements" />
-              <ul className="space-y-2">
-                {school.achievements.map((a) => (
-                  <li key={a} className="flex gap-2 text-[13px] text-ink">
-                    <Trophy className="size-3.5 text-gold-deep shrink-0 mt-0.5" />
-                    {a}
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          </FadeIn>
+          {school.achievements.length > 0 && (
+            <FadeIn delay={0.1}>
+              <Card padded={false} className="p-4">
+                <CardHeader className="mb-2.5" title="Achievements" />
+                <ul className="space-y-2">
+                  {school.achievements.map((a) => (
+                    <li key={a} className="flex gap-2 text-[13px] text-ink">
+                      <Trophy className="size-3.5 text-gold-deep shrink-0 mt-0.5" />
+                      {a}
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            </FadeIn>
+          )}
 
           <FadeIn delay={0.15}>
             <Card padded={false} className="p-4">

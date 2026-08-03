@@ -9,11 +9,12 @@ import { Button } from "@/components/ui/Button";
 import { DataTable } from "@/components/ui/DataTable";
 import { Input, Select } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
+import { UnderDevelopment } from "@/components/ui/UnderDevelopment";
 import { useAuth } from "@/hooks/useAuth";
 import { academicService } from "@/services/academicService";
 import { toast } from "@/stores/uiStore";
 import { formatDate } from "@/lib/format";
-import type { ApiError } from "@/lib/api/client";
+import { USE_MOCKS, type ApiError } from "@/lib/api/client";
 import type { Assessment, AssessmentType } from "@/types";
 
 export const ASSESSMENT_TYPE: Record<AssessmentType, { label: string; variant: BadgeVariant }> = {
@@ -46,21 +47,25 @@ export default function AssessmentsPage() {
   const { data: teacher } = useQuery({
     queryKey: ["teacher", user?.id],
     queryFn: () => academicService.teacher(user!.id),
-    enabled: Boolean(user),
+    enabled: Boolean(user) && USE_MOCKS,
   });
 
   const { data: classes = [] } = useQuery({
     queryKey: ["teacher-classes", user?.id],
     queryFn: () => academicService.teacherClasses(user!.id),
-    enabled: Boolean(user),
+    enabled: Boolean(user) && USE_MOCKS,
   });
 
-  const { data: term } = useQuery({ queryKey: ["current-term"], queryFn: () => academicService.currentTerm() });
+  const { data: term } = useQuery({
+    queryKey: ["current-term"],
+    queryFn: () => academicService.currentTerm(),
+    enabled: USE_MOCKS,
+  });
 
   const { data: assessments = [], isLoading } = useQuery({
     queryKey: ["assessments", user?.id],
     queryFn: () => academicService.assessmentsByTeacher(user!.id),
-    enabled: Boolean(user),
+    enabled: Boolean(user) && USE_MOCKS,
   });
 
   const classNameById = useMemo(() => new Map(classes.map((c) => [c.id, c.name])), [classes]);
@@ -112,6 +117,21 @@ export default function AssessmentsPage() {
     draft!.title.trim().length > 0 &&
     Number(draft!.maxScore) > 0 &&
     draft!.date !== "";
+
+  if (!USE_MOCKS) {
+    return (
+      <PageTransition>
+        <PageHeader
+          title="Assessments"
+          description="Every exam, test, quiz and assignment you have recorded — click a row to grade it."
+        />
+        <UnderDevelopment
+          title="Assessments & grading"
+          description="Gradebook and assessment tracking aren't available in this backend yet."
+        />
+      </PageTransition>
+    );
+  }
 
   return (
     <PageTransition>

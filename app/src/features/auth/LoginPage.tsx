@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/Input";
 import { useAuthStore } from "@/stores/authStore";
 import { primaryRole, PORTAL_HOME } from "@/config/roles";
 import type { ApiError } from "@/lib/api/client";
+import { USE_MOCKS } from "@/lib/api/client";
 
 const DEMO_ACCOUNTS = [
   { email: "parent@demo.rw", label: "Parent", dot: "bg-primary" },
@@ -28,10 +29,10 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Demo deep-link: /login?as=parent@demo.rw signs straight into that account.
+  // Demo deep-link: /login?as=parent@demo.rw signs straight into that account (mock mode only).
   const autoAs = searchParams.get("as");
   useEffect(() => {
-    if (autoAs && DEMO_ACCOUNTS.some((a) => a.email === autoAs)) {
+    if (USE_MOCKS && autoAs && DEMO_ACCOUNTS.some((a) => a.email === autoAs)) {
       void doLogin(autoAs, "demo123!");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -59,7 +60,7 @@ export default function LoginPage() {
   return (
     <AuthLayout>
       <h1 className="font-display text-[26px] font-bold text-ink">Welcome back</h1>
-      <p className="text-muted text-[14px] mt-1 mb-7">Sign in to your REDEP account.</p>
+      <p className="text-muted text-[14px] mt-1 mb-7">Sign in to your E-SHURI account.</p>
 
       <form onSubmit={onSubmit} className="space-y-4" noValidate>
         <Input
@@ -97,7 +98,7 @@ export default function LoginPage() {
       </form>
 
       <p className="text-[13.5px] text-muted mt-6">
-        New to REDEP?{" "}
+        New to E-SHURI?{" "}
         <Link to="/register" className="font-medium text-primary-deep hover:underline">
           Create a parent or applicant account
         </Link>
@@ -107,26 +108,28 @@ export default function LoginPage() {
         </Link>
       </p>
 
-      <div className="mt-7 border-t border-line pt-5">
-        <p className="text-[12px] font-semibold uppercase tracking-wide text-muted mb-2.5">
-          Demo — explore each portal
-        </p>
-        <div className="flex flex-wrap gap-1.5">
-          {DEMO_ACCOUNTS.map((acc) => (
-            <button
-              key={acc.email}
-              type="button"
-              disabled={loading}
-              onClick={() => void doLogin(acc.email, "demo123!")}
-              className="inline-flex items-center gap-1.5 rounded-full border border-line bg-paper px-3 py-1.5 text-[12.5px] font-medium text-ink hover:border-primary hover:bg-primary-soft/50 hover:text-primary-deep transition-colors disabled:opacity-50"
-            >
-              <span className={`size-1.5 rounded-full ${acc.dot}`} aria-hidden />
-              {acc.label}
-            </button>
-          ))}
+      {USE_MOCKS && (
+        <div className="mt-7 border-t border-line pt-5">
+          <p className="text-[12px] font-semibold uppercase tracking-wide text-muted mb-2.5">
+            Demo — explore each portal
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {DEMO_ACCOUNTS.map((acc) => (
+              <button
+                key={acc.email}
+                type="button"
+                disabled={loading}
+                onClick={() => void doLogin(acc.email, "demo123!")}
+                className="inline-flex items-center gap-1.5 rounded-full border border-line bg-paper px-3 py-1.5 text-[12.5px] font-medium text-ink hover:border-primary hover:bg-primary-soft/50 hover:text-primary-deep transition-colors disabled:opacity-50"
+              >
+                <span className={`size-1.5 rounded-full ${acc.dot}`} aria-hidden />
+                {acc.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-[11.5px] text-faint mt-2.5">One click signs you in with sample data.</p>
         </div>
-        <p className="text-[11.5px] text-faint mt-2.5">One click signs you in with sample data.</p>
-      </div>
+      )}
     </AuthLayout>
   );
 }

@@ -24,6 +24,11 @@ export default function EnrollmentPage() {
 
   const byEnrolled = [...districts].sort((a, b) => b.enrolled - a.enrolled);
   const totalEnrolled = districts.reduce((s, d) => s + d.enrolled, 0);
+  // No satisfaction-survey system in the real backend — the column below only renders when
+  // the field is present on every row (mock mode).
+  const hasSatisfaction = districts.length > 0 && districts.every((d) => d.satisfaction !== undefined);
+  const hasApplicationsSeries = trends.some((t) => t.applications !== undefined);
+  const hasCapacitySeries = trends.some((t) => t.capacity !== undefined);
 
   // Top 3 districts by enrollment; everything else folds into "Other" (donut ≤ 4 slices).
   const top3 = byEnrolled.slice(0, 3);
@@ -56,12 +61,16 @@ export default function EnrollmentPage() {
         );
       },
     },
-    {
-      key: "satisfaction",
-      header: "Satisfaction",
-      align: "right",
-      render: (d) => <span className="tnum font-semibold text-gold-deep">★ {d.satisfaction.toFixed(1)}</span>,
-    },
+    ...(hasSatisfaction
+      ? [
+          {
+            key: "satisfaction",
+            header: "Satisfaction",
+            align: "right",
+            render: (d) => <span className="tnum font-semibold text-gold-deep">★ {d.satisfaction!.toFixed(1)}</span>,
+          } satisfies Column<DistrictStat>,
+        ]
+      : []),
   ];
 
   return (
@@ -75,7 +84,11 @@ export default function EnrollmentPage() {
         <Card className="lg:col-span-3">
           <CardHeader
             title="National trend"
-            description="Learners enrolled, applications received and seat capacity over six terms."
+            description={
+              hasApplicationsSeries || hasCapacitySeries
+                ? "Learners enrolled, applications received and seat capacity over six terms."
+                : "Learners enrolled, month by month."
+            }
           />
           {loadingTrends ? (
             <Skeleton className="h-[280px] w-full" />
@@ -85,8 +98,8 @@ export default function EnrollmentPage() {
               xKey="period"
               series={[
                 { key: "enrolled", name: "Enrolled" },
-                { key: "applications", name: "Applications" },
-                { key: "capacity", name: "Capacity" },
+                ...(hasApplicationsSeries ? [{ key: "applications", name: "Applications" }] : []),
+                ...(hasCapacitySeries ? [{ key: "capacity", name: "Capacity" }] : []),
               ]}
               formatter={formatCompact}
               height={280}

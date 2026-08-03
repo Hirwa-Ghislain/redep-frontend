@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Building2, CreditCard, Inbox, Users } from "lucide-react";
+import { Building2, CreditCard, Inbox, ShieldAlert, Users } from "lucide-react";
 import { HeroBanner } from "@/components/layout/HeroBanner";
 import { FadeIn, PageTransition, Stagger, StaggerItem } from "@/components/motion";
 import { Badge } from "@/components/ui/Badge";
@@ -9,6 +9,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
 import { CardSkeleton, Skeleton } from "@/components/ui/Skeleton";
 import { BarsChart } from "@/components/charts/BarsChart";
+import { USE_MOCKS } from "@/lib/api/client";
 import { useAuth } from "@/hooks/useAuth";
 import { adminService } from "@/services/adminService";
 import { formatCompact, formatNumber, timeAgo } from "@/lib/format";
@@ -33,6 +34,7 @@ export default function AdminDashboard() {
   const { data: requests = [], isLoading: loadingRequests } = useQuery({
     queryKey: ["onboarding"],
     queryFn: () => adminService.onboardingRequests(),
+    enabled: USE_MOCKS,
   });
 
   const { data: audit = [], isLoading: loadingAudit } = useQuery({
@@ -41,30 +43,39 @@ export default function AdminDashboard() {
   });
 
   const pending = kpis?.pendingOnboarding ?? 0;
+  const thirdStat = USE_MOCKS
+    ? { label: "Pending onboarding", value: formatNumber(pending) }
+    : { label: "Suspended schools", value: formatNumber(kpis?.suspendedSchools ?? 0) };
 
   return (
     <PageTransition>
       <HeroBanner
         eyebrow="Platform administration"
         title={`Muraho, ${user?.firstName}`}
-        subtitle="Health, growth and pending work across the whole REDEP ecosystem."
+        subtitle="Health, growth and pending work across the whole E-SHURI ecosystem."
         stats={
           kpis
             ? [
                 { label: "Users", value: formatNumber(kpis.totalUsers) },
                 { label: "Active schools", value: formatNumber(kpis.activeSchools) },
-                { label: "Pending onboarding", value: formatNumber(kpis.pendingOnboarding) },
+                thirdStat,
               ]
             : undefined
         }
         actions={
-          <Button
-            variant={pending > 0 ? "gold" : "secondary"}
-            icon={<Inbox className="size-4" />}
-            onClick={() => navigate("/admin/schools")}
-          >
-            Review onboarding
-          </Button>
+          USE_MOCKS ? (
+            <Button
+              variant={pending > 0 ? "gold" : "secondary"}
+              icon={<Inbox className="size-4" />}
+              onClick={() => navigate("/admin/schools")}
+            >
+              Review onboarding
+            </Button>
+          ) : (
+            <Button variant="secondary" icon={<Building2 className="size-4" />} onClick={() => navigate("/admin/schools")}>
+              Manage schools
+            </Button>
+          )
         }
       />
 
@@ -81,33 +92,62 @@ export default function AdminDashboard() {
           <StaggerItem>
             <StatCard label="Active schools" value={formatNumber(kpis.activeSchools)} icon={Building2} tone="sky" />
           </StaggerItem>
+          {USE_MOCKS ? (
+            <StaggerItem>
+              <StatCard
+                label="Pending onboarding"
+                value={formatNumber(kpis.pendingOnboarding)}
+                icon={Inbox}
+                tone={kpis.pendingOnboarding > 0 ? "gold" : "default"}
+              />
+            </StaggerItem>
+          ) : (
+            <StaggerItem>
+              <StatCard
+                label="Suspended schools"
+                value={formatNumber(kpis.suspendedSchools ?? 0)}
+                icon={ShieldAlert}
+                tone={(kpis.suspendedSchools ?? 0) > 0 ? "gold" : "default"}
+              />
+            </StaggerItem>
+          )}
           <StaggerItem>
             <StatCard
-              label="Pending onboarding"
-              value={formatNumber(kpis.pendingOnboarding)}
-              icon={Inbox}
-              tone={kpis.pendingOnboarding > 0 ? "gold" : "default"}
+              label={USE_MOCKS ? "Payments today" : "Open job postings"}
+              value={formatNumber(USE_MOCKS ? kpis.paymentsToday : kpis.openJobPostings ?? 0)}
+              icon={CreditCard}
+              tone="default"
             />
-          </StaggerItem>
-          <StaggerItem>
-            <StatCard label="Payments today" value={formatNumber(kpis.paymentsToday)} icon={CreditCard} tone="default" />
           </StaggerItem>
         </Stagger>
       )}
 
-      {/* Signups chart + platform health rail */}
+      {/* Signups/role chart + platform health rail */}
       <div className="grid lg:grid-cols-3 gap-4 mt-4 items-start">
         <Card className="lg:col-span-2">
-          <CardHeader title="New users by month" description="Account signups across all roles, last six months." />
+          <CardHeader
+            title={USE_MOCKS ? "New users by month" : "Users by role"}
+            description={USE_MOCKS ? "Account signups across all roles, last six months." : "Platform-wide headcount for each account role."}
+          />
           {loadingKpis || !kpis ? (
             <Skeleton className="h-[260px] w-full" />
-          ) : (
+          ) : USE_MOCKS ? (
             <BarsChart
               data={kpis.monthlySignups}
               xKey="month"
               series={[{ key: "users", name: "New users" }]}
               formatter={formatCompact}
             />
+          ) : kpis.roleBreakdown && kpis.roleBreakdown.length > 0 ? (
+            <BarsChart
+              data={kpis.roleBreakdown}
+              xKey="role"
+              series={[{ key: "count", name: "Users" }]}
+              formatter={formatCompact}
+              horizontal
+            />
+          ) : (
+            <p className="py-16 text-center text-[13px] text-muted">No role data yet.</p>
           )}
         </Card>
 
@@ -139,7 +179,7 @@ export default function AdminDashboard() {
         </FadeIn>
       </div>
 
-      {/* Onboarding queue + audit activity */}
+      {/* Onboarding queue / explanation + audit activity */}
       <div className="grid lg:grid-cols-2 gap-4 mt-4 items-start">
         <FadeIn>
           <Card padded={false}>
@@ -153,7 +193,12 @@ export default function AdminDashboard() {
                 </Link>
               }
             />
-            {loadingRequests ? (
+            {!USE_MOCKS ? (
+              <p className="px-4 py-8 text-center text-[13px] text-muted">
+                Not applicable here — NESA-accredited schools self-register and go live immediately. There's no admin
+                verification queue on this backend.
+              </p>
+            ) : loadingRequests ? (
               <div className="px-4 pb-4 space-y-2">
                 <Skeleton className="h-9 w-full" />
                 <Skeleton className="h-9 w-full" />

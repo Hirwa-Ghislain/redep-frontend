@@ -36,7 +36,7 @@ export default function ProfilePage() {
   if (isLoading || !profile || !user) {
     return (
       <PageTransition>
-        <PageHeader title="My profile" description="Your REDEP CV — this is what schools see when you apply." />
+        <PageHeader title="My profile" description="Your E-SHURI CV — this is what schools see when you apply." />
         <div className="grid lg:grid-cols-3 gap-4 items-start">
           <div className="lg:col-span-2 space-y-4"><CardSkeleton /><CardSkeleton /><CardSkeleton /></div>
           <CardSkeleton />
@@ -153,7 +153,7 @@ function ProfileEditor({ profile, user }: { profile: ApplicantProfile; user: Use
     <PageTransition>
       <PageHeader
         title="My profile"
-        description="Your REDEP CV — this is what schools see when you apply."
+        description="Your E-SHURI CV — this is what schools see when you apply."
       />
 
       <div className="grid lg:grid-cols-3 gap-4 items-start">
@@ -394,7 +394,7 @@ function ProfileEditor({ profile, user }: { profile: ApplicantProfile; user: Use
               label="Attached files"
               files={documents.map((d) => d.fileName)}
               onChange={onDocumentsChange}
-              hint="New uploads are marked pending until REDEP verifies them."
+              hint="New uploads are marked pending until E-SHURI verifies them."
             />
           </Card>
         </div>

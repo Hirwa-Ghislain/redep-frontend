@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeftRight, Info } from "lucide-react";
+import { ArrowLeftRight, Compass, Info } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PageTransition } from "@/components/motion";
 import { Badge } from "@/components/ui/Badge";
@@ -11,6 +12,7 @@ import { Select, Textarea } from "@/components/ui/Input";
 import { useAuth } from "@/hooks/useAuth";
 import { studentService } from "@/services/studentService";
 import { transferService } from "@/services/transferService";
+import { USE_MOCKS } from "@/lib/api/client";
 import { toast } from "@/stores/uiStore";
 import { formatDate, fullName } from "@/lib/format";
 import { TRANSFER_STATUS } from "@/lib/status";
@@ -20,7 +22,7 @@ export default function TransfersPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [studentId, setStudentId] = useState("");
-  const [type, setType] = useState<"TRANSFER" | "RESIGNATION">("TRANSFER");
+  const [type, setType] = useState<"TRANSFER" | "RESIGNATION">("RESIGNATION");
   const [reason, setReason] = useState("");
 
   const { data: children = [] } = useQuery({
@@ -29,6 +31,7 @@ export default function TransfersPage() {
     enabled: Boolean(user),
   });
   const enrolled = children.filter((c) => c.status === "ENROLLED");
+  const selectedChild = enrolled.find((c) => c.id === studentId);
 
   const { data: requests = [], isLoading } = useQuery({
     queryKey: ["transfers", user?.id],
@@ -40,6 +43,7 @@ export default function TransfersPage() {
     mutationFn: () =>
       transferService.create({
         studentId,
+        enrollmentId: selectedChild?.enrollmentId,
         parentId: user!.id,
         parentName: fullName(user!),
         type,
@@ -57,13 +61,17 @@ export default function TransfersPage() {
   return (
     <PageTransition>
       <PageHeader
-        title="Transfers & exits"
-        description="Request a transfer or resignation; the school confirms and your child's records move to history."
+        title="Withdraw a child"
+        description={
+          USE_MOCKS
+            ? "Request a transfer or resignation; the school confirms and your child's records move to history."
+            : "Request to withdraw your child from their current school. Moving to a different school means applying fresh via Discover schools — there is no direct transfer between schools."
+        }
       />
 
       <div className="grid lg:grid-cols-[380px_1fr] gap-4 items-start">
         <Card>
-          <CardHeader title="New request" description="The school reviews every departure request." />
+          <CardHeader title="New request" description="The school reviews every withdrawal request." />
           <div className="space-y-3.5">
             <Select label="Child" value={studentId} onChange={(e) => setStudentId(e.target.value)} required>
               <option value="" disabled>Select a child…</option>
@@ -73,10 +81,12 @@ export default function TransfersPage() {
                 </option>
               ))}
             </Select>
-            <Select label="Request type" value={type} onChange={(e) => setType(e.target.value as typeof type)}>
-              <option value="TRANSFER">Transfer to another school</option>
-              <option value="RESIGNATION">Leaving (resignation)</option>
-            </Select>
+            {USE_MOCKS && (
+              <Select label="Request type" value={type} onChange={(e) => setType(e.target.value as typeof type)}>
+                <option value="TRANSFER">Transfer to another school</option>
+                <option value="RESIGNATION">Leaving (resignation)</option>
+              </Select>
+            )}
             <Textarea
               label="Reason"
               placeholder="E.g. family relocating to another district…"
@@ -89,9 +99,16 @@ export default function TransfersPage() {
               Once confirmed, the seat is released and records move to “Former students”. You keep
               read-only access to receipts and academic history.
             </div>
+            {!USE_MOCKS && (
+              <div className="flex items-start gap-2.5 rounded-xl bg-primary-soft/40 px-4 py-3 text-[12.5px] text-primary-deep">
+                <Compass className="size-4 shrink-0 mt-0.5" />
+                Want a different school instead? Apply fresh from{" "}
+                <Link to="/parent/discover" className="underline font-medium">Discover schools</Link> — no need to withdraw first.
+              </div>
+            )}
             <Button
               icon={<ArrowLeftRight className="size-4" />}
-              disabled={!studentId || !reason.trim()}
+              disabled={!studentId || !reason.trim() || (!USE_MOCKS && !selectedChild?.enrollmentId)}
               loading={submit.isPending}
               onClick={() => submit.mutate()}
             >
@@ -102,9 +119,9 @@ export default function TransfersPage() {
 
         <div className="space-y-4 min-w-0">
           <Card padded={false}>
-            <CardHeader className="px-5 pt-4" title="Request history" description="Every transfer and exit request, newest first." />
+            <CardHeader className="px-5 pt-4" title="Request history" description="Every withdrawal request, newest first." />
             {isLoading ? null : requests.length === 0 ? (
-              <EmptyState icon={ArrowLeftRight} title="No requests" description="Transfer and exit requests appear here." className="py-10" />
+              <EmptyState icon={ArrowLeftRight} title="No requests" description="Withdrawal requests appear here." className="py-10" />
             ) : (
               <div className="divide-y divide-line">
                 {requests.map((r) => {
@@ -114,10 +131,10 @@ export default function TransfersPage() {
                       <div className="min-w-0 flex-1">
                         <p className="text-[13px] font-medium text-ink">{r.studentName}</p>
                         <p className="text-[12px] text-muted mt-0.5">
-                          {r.type === "TRANSFER" ? "Transfer" : "Resignation"} · {r.schoolName} · requested {formatDate(r.requestedAt)}
+                          {r.type === "TRANSFER" ? "Transfer" : "Withdrawal"} · {r.schoolName} · requested {formatDate(r.requestedAt)}
                           {r.resolvedAt ? ` · resolved ${formatDate(r.resolvedAt)}` : ""}
                         </p>
-                        <p className="text-[12.5px] text-ink mt-1">“{r.reason}”</p>
+                        {r.reason !== "—" && <p className="text-[12.5px] text-ink mt-1">“{r.reason}”</p>}
                       </div>
                       <Badge variant={meta.variant} dot>{meta.label}</Badge>
                     </div>

@@ -1,4 +1,4 @@
-# REDEP — Rwanda Education Digital Ecosystem Platform
+# E-SHURI — Rwanda Education Digital Ecosystem Platform
 
 A centralized multi-school platform connecting **Schools, Parents, Teachers, Job Applicants
 and Education Authorities** — school discovery with live seats, digital admissions, fee

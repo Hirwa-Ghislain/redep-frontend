@@ -328,14 +328,14 @@ export function PortalShell({ nav, portalLabel, contextChip }: PortalShellProps)
   const otherRoles = user.roles.filter((r) => r !== role);
   const workspaceName =
     school?.name ??
-    (role === "PARENT" ? "Family account" : role === "APPLICANT" ? "My career" : "REDEP National");
+    (role === "PARENT" ? "Family account" : role === "APPLICANT" ? "My career" : "E-SHURI National");
 
   const sidebarContent = (
     <>
       <div className="flex items-center justify-between px-4 pt-4 pb-3">
         <span className="inline-flex items-center gap-2.5 select-none">
           <LogoMark size={28} />
-          <span className="font-display font-bold text-[15px] tracking-tight text-white">REDEP</span>
+          <span className="font-display font-bold text-[15px] tracking-tight text-white">E-SHURI</span>
         </span>
         <button
           className="lg:hidden p-1.5 rounded-lg text-white/60 hover:text-white"

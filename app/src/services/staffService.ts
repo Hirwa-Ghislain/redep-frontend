@@ -1,6 +1,17 @@
 import type { RoleDefinition, StaffMember } from "@/types";
 import { db, nowIso, simulate, snapshot } from "@/mocks/db";
 import { uid } from "@/lib/utils";
+import { http, USE_MOCKS } from "@/lib/api/client";
+import { schoolService, type RealSchoolTeacher } from "@/services/schoolService";
+
+export interface RealInvitationResult {
+  role: "TEACHER" | "ACCOUNTANT";
+  requestedCount: number;
+  invitedCount: number;
+  failedCount: number;
+  invited: Array<{ id: string; email: string; role: string; expiresAt: string; createdAt: string }>;
+  failed: Array<{ email: string; code: string; message: string }>;
+}
 
 export const staffService = {
   // GET /api/v1/schools/:id/staff
@@ -74,5 +85,25 @@ export const staffService = {
     }
     db.roleDefs.splice(db.roleDefs.indexOf(role), 1);
     return simulate(undefined);
+  },
+
+  /**
+   * Real staff invitations — the backend only has fixed TEACHER/ACCOUNTANT roles
+   * (no custom role catalog). POST /schools/:schoolId/invitations
+   */
+  async inviteReal(schoolId: string, input: { emails: string[]; role: "TEACHER" | "ACCOUNTANT" }): Promise<RealInvitationResult> {
+    if (USE_MOCKS) {
+      return simulate({
+        role: input.role, requestedCount: input.emails.length, invitedCount: input.emails.length, failedCount: 0,
+        invited: input.emails.map((email) => ({ id: uid("inv"), email, role: input.role, expiresAt: nowIso(), createdAt: nowIso() })),
+        failed: [],
+      });
+    }
+    return http.post<RealInvitationResult>(`/schools/${schoolId}/invitations`, input);
+  },
+
+  /** Real teacher roster (accountants are not separately listed by the backend). GET /schools/:schoolId/teachers */
+  async listReal(schoolId: string): Promise<RealSchoolTeacher[]> {
+    return schoolService.teachersReal(schoolId);
   },
 };

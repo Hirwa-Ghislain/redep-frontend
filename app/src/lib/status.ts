@@ -93,6 +93,7 @@ export const FEE_CATEGORY_LABEL: Record<string, string> = {
   LUNCH: "Lunch",
   UNIFORM: "Uniform",
   EXAMINATION: "Examination",
+  APPLICATION: "Application fee",
   OTHER: "Other",
 };
 
@@ -100,6 +101,8 @@ export const CHANNEL_LABEL: Record<string, string> = {
   BANK: "Bank",
   MOMO_MTN: "MTN MoMo",
   MOMO_AIRTEL: "Airtel Money",
+  MOMO: "Mobile Money",
+  CARD: "Card",
 };
 
 export const LEVEL_LABEL: Record<string, string> = {
@@ -114,4 +117,17 @@ export const SCHOOL_TYPE_LABEL: Record<string, string> = {
   PUBLIC: "Public",
   PRIVATE: "Private",
   GOVERNMENT_AIDED: "Govt-aided",
+  UNKNOWN: "Unspecified",
+};
+
+/** Real backend application statuses — automatic pipeline, no manual review. */
+export const BACKEND_APPLICATION_STATUS: Record<
+  "DRAFT" | "VALIDATED" | "PENDING_PAYMENT" | "ADMITTED" | "REJECTED",
+  StatusMeta
+> = {
+  DRAFT: { label: "Draft", variant: "neutral" },
+  VALIDATED: { label: "Documents verified", variant: "info" },
+  PENDING_PAYMENT: { label: "Awaiting payment", variant: "warning" },
+  ADMITTED: { label: "Admitted", variant: "success" },
+  REJECTED: { label: "Rejected", variant: "danger" },
 };

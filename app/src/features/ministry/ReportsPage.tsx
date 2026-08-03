@@ -9,6 +9,8 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Select, Switch } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { UnderDevelopment } from "@/components/ui/UnderDevelopment";
+import { USE_MOCKS } from "@/lib/api/client";
 import { ministryService } from "@/services/ministryService";
 import { formatNumber, formatDateTime } from "@/lib/format";
 import { toast } from "@/stores/uiStore";
@@ -58,7 +60,7 @@ function buildCsv(type: ReportType, rows: DistrictStat[]): string {
     case "enrollment":
       return [
         "district,schools,enrolled,capacity,utilization_pct,satisfaction",
-        ...rows.map((d) => `${d.district},${d.schools},${d.enrolled},${d.capacity},${pct(d)},${d.satisfaction}`),
+        ...rows.map((d) => `${d.district},${d.schools},${d.enrolled},${d.capacity},${pct(d)},${d.satisfaction ?? ""}`),
       ].join("\n");
     case "capacity":
       return [
@@ -73,12 +75,35 @@ function buildCsv(type: ReportType, rows: DistrictStat[]): string {
     case "transfer-trends":
       return [
         "district,transfers_out,transfers_in,net",
-        ...rows.map((d) => `${d.district},${d.transfersOut},${d.transfersIn},${d.transfersIn - d.transfersOut}`),
+        ...rows.map((d) => `${d.district},${d.transfersOut ?? 0},${d.transfersIn ?? 0},${(d.transfersIn ?? 0) - (d.transfersOut ?? 0)}`),
       ].join("\n");
   }
 }
 
+/**
+ * The real backend has no report-generation/export capability — the CSV export below is a
+ * client-side gimmick over district stats, not a real reporting service. Mock mode keeps the
+ * full demo; live mode shows an honest "not available" state instead.
+ */
 export default function ReportsPage() {
+  if (!USE_MOCKS) {
+    return (
+      <PageTransition>
+        <PageHeader
+          title="Reports"
+          description="Export national statistics as CSV for offline analysis, or manage recurring digests."
+        />
+        <UnderDevelopment
+          title="Report generation isn't available yet"
+          description="Generating and exporting national reports (CSV/PDF exports, scheduled digests) isn't supported by the backend yet. Use the Enrollment, Capacity and Staffing pages to view live national data in the meantime."
+        />
+      </PageTransition>
+    );
+  }
+  return <ReportsPageMock />;
+}
+
+function ReportsPageMock() {
   const [type, setType] = useState<ReportType>("enrollment");
   const [scope, setScope] = useState(""); // "" = National
   const [generated, setGenerated] = useState<GeneratedReport[]>([]);
@@ -101,7 +126,7 @@ export default function ReportsPage() {
     const csv = buildCsv(type, rows);
     const scopeSlug = scope ? scope.toLowerCase().replace(/\s+/g, "-") : "national";
     const stamp = new Date().toISOString().slice(0, 7); // yyyy-MM
-    const name = `redep-${type}-${scopeSlug}-${stamp}.csv`;
+    const name = `eshuri-${type}-${scopeSlug}-${stamp}.csv`;
 
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);

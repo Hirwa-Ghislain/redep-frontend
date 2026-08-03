@@ -13,6 +13,7 @@ import { Select } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { StatCard } from "@/components/ui/StatCard";
+import { UserStatusBadge } from "@/components/ui/UserStatusBadge";
 import { useAuth } from "@/hooks/useAuth";
 import { adminService } from "@/services/adminService";
 import { toast } from "@/stores/uiStore";
@@ -39,18 +40,20 @@ export default function UsersPage() {
   const { data: kpis } = useQuery({ queryKey: ["admin-kpis"], queryFn: () => adminService.kpis() });
 
   const setStatus = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: "ACTIVE" | "SUSPENDED" }) =>
+    // The real backend's status endpoint returns only `{ id, status }` — display text is built
+    // from the `user` captured in the mutation variables, not from the (thin) response.
+    mutationFn: ({ id, status }: { id: string; status: "ACTIVE" | "SUSPENDED"; user: User }) =>
       adminService.setUserStatus(id, status, actor),
-    onSuccess: (updated) => {
+    onSuccess: (_data, vars) => {
       setSuspendTarget(null);
       void qc.invalidateQueries({ queryKey: ["admin-users"] });
       void qc.invalidateQueries({ queryKey: ["audit"] });
       toast({
-        title: updated.status === "SUSPENDED" ? "Account suspended" : "Account reactivated",
+        title: vars.status === "SUSPENDED" ? "Account suspended" : "Account reactivated",
         description:
-          updated.status === "SUSPENDED"
-            ? `${fullName(updated)} can no longer sign in.`
-            : `${fullName(updated)} can sign in again.`,
+          vars.status === "SUSPENDED"
+            ? `${fullName(vars.user)} can no longer sign in.`
+            : `${fullName(vars.user)} can sign in again.`,
         variant: "success",
       });
     },
@@ -123,12 +126,7 @@ export default function UsersPage() {
           {
             key: "status",
             header: "Status",
-            render: (u) =>
-              u.status === "SUSPENDED" ? (
-                <Badge variant="danger" dot>Suspended</Badge>
-              ) : (
-                <Badge variant="success" dot>Active</Badge>
-              ),
+            render: (u) => <UserStatusBadge status={u.status} />,
           },
           {
             key: "actions",
@@ -143,7 +141,7 @@ export default function UsersPage() {
                 }
                 items={
                   u.status === "SUSPENDED"
-                    ? [{ label: "Reactivate account", icon: Play, onSelect: () => setStatus.mutate({ id: u.id, status: "ACTIVE" }) }]
+                    ? [{ label: "Reactivate account", icon: Play, onSelect: () => setStatus.mutate({ id: u.id, status: "ACTIVE", user: u }) }]
                     : [{ label: "Suspend account", icon: Pause, danger: true, onSelect: () => setSuspendTarget(u) }]
                 }
               />
@@ -176,7 +174,7 @@ export default function UsersPage() {
             <Button
               variant="danger"
               loading={setStatus.isPending}
-              onClick={() => suspendTarget && setStatus.mutate({ id: suspendTarget.id, status: "SUSPENDED" })}
+              onClick={() => suspendTarget && setStatus.mutate({ id: suspendTarget.id, status: "SUSPENDED", user: suspendTarget })}
             >
               Suspend account
             </Button>

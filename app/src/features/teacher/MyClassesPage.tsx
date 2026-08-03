@@ -14,7 +14,7 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { CardSkeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { academicService } from "@/services/academicService";
-import { fullName } from "@/lib/format";
+import { formatDate, fullName } from "@/lib/format";
 import { LEVEL_LABEL } from "@/lib/status";
 import type { SchoolClass, Student } from "@/types";
 
@@ -61,7 +61,7 @@ export default function MyClassesPage() {
                 <Card hover padded={false} className="flex h-full flex-col p-4">
                   <div className="flex items-center justify-between gap-3">
                     <h3 className="font-display font-bold text-[14px] text-ink truncate">{c.name}</h3>
-                    <Badge variant="neutral">{LEVEL_LABEL[c.level]}</Badge>
+                    <Badge variant="neutral">{c.level ? LEVEL_LABEL[c.level] : c.name}</Badge>
                   </div>
                   <p className="text-[12px] text-muted mt-0.5">
                     <span className="tnum">{c.students.length}</span> students on the roster
@@ -118,7 +118,9 @@ export default function MyClassesPage() {
         onClose={() => setRosterClass(null)}
         title={rosterClass?.name ?? ""}
         description={
-          rosterClass ? `${LEVEL_LABEL[rosterClass.level]} · ${rosterClass.students.length} enrolled students` : undefined
+          rosterClass
+            ? `${rosterClass.level ? LEVEL_LABEL[rosterClass.level] : rosterClass.name} · ${rosterClass.students.length} enrolled students`
+            : undefined
         }
         wide
       >
@@ -138,9 +140,9 @@ export default function MyClassesPage() {
                 ),
               },
               {
-                key: "gender",
-                header: "Gender",
-                render: (s) => <Badge variant="neutral">{s.gender === "F" ? "Female" : "Male"}</Badge>,
+                key: "dateOfBirth",
+                header: "Date of birth",
+                render: (s) => <span className="tnum text-muted">{formatDate(s.dateOfBirth)}</span>,
               },
             ]}
               rows={rosterClass.students}

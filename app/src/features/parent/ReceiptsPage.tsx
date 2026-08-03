@@ -10,6 +10,7 @@ import { SearchInput } from "@/components/ui/SearchInput";
 import { LogoMark } from "@/components/layout/Logo";
 import { useAuth } from "@/hooks/useAuth";
 import { paymentService } from "@/services/paymentService";
+import { USE_MOCKS } from "@/lib/api/client";
 import { toast } from "@/stores/uiStore";
 import { formatDateTime, formatRWF } from "@/lib/format";
 import { CHANNEL_LABEL, FEE_CATEGORY_LABEL } from "@/lib/status";
@@ -19,12 +20,36 @@ export default function ReceiptsPage() {
   const { user } = useAuth();
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<Receipt | null>(null);
+  const [downloading, setDownloading] = useState(false);
 
   const { data: receipts = [], isLoading } = useQuery({
     queryKey: ["receipts", user?.id, q],
     queryFn: () => paymentService.receiptsByParent(user!.id, q || undefined),
     enabled: Boolean(user),
   });
+
+  async function downloadReceipt(receipt: Receipt) {
+    if (USE_MOCKS) {
+      toast({ title: "Receipt downloaded", description: `${receipt.reference}.pdf (simulated)`, variant: "success" });
+      return;
+    }
+    setDownloading(true);
+    try {
+      const blob = await paymentService.downloadReceiptBlob(receipt.paymentId);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${receipt.reference}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast({ title: "Download failed", description: "Could not fetch the receipt PDF. Try again.", variant: "error" });
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   return (
     <PageTransition>
@@ -62,7 +87,8 @@ export default function ReceiptsPage() {
             <Button variant="ghost" onClick={() => setSelected(null)}>Close</Button>
             <Button
               icon={<Download className="size-4" />}
-              onClick={() => toast({ title: "Receipt downloaded", description: `${selected?.reference}.pdf (simulated)`, variant: "success" })}
+              loading={downloading}
+              onClick={() => selected && downloadReceipt(selected)}
             >
               Download PDF
             </Button>
@@ -84,7 +110,9 @@ export default function ReceiptsPage() {
             <div className="px-5 py-5">
               <dl className="grid grid-cols-2 gap-x-4 gap-y-3.5 text-[13.5px]">
                 <div><dt className="text-muted text-[12px]">School</dt><dd className="font-medium text-ink">{selected.schoolName}</dd></div>
-                <div><dt className="text-muted text-[12px]">Term</dt><dd className="font-medium text-ink">{selected.termLabel}</dd></div>
+                {selected.termLabel && (
+                  <div><dt className="text-muted text-[12px]">Term</dt><dd className="font-medium text-ink">{selected.termLabel}</dd></div>
+                )}
                 <div><dt className="text-muted text-[12px]">Student</dt><dd className="font-medium text-ink">{selected.studentName}</dd></div>
                 <div><dt className="text-muted text-[12px]">Paid by</dt><dd className="font-medium text-ink">{selected.parentName}</dd></div>
                 <div><dt className="text-muted text-[12px]">Category</dt><dd className="font-medium text-ink">{FEE_CATEGORY_LABEL[selected.category]}</dd></div>
@@ -100,7 +128,7 @@ export default function ReceiptsPage() {
               </div>
               <p className="flex items-center gap-1.5 text-[11.5px] text-faint mt-4">
                 <ReceiptText className="size-3.5" />
-                Verify anytime at redep.rw/verify-receipt with reference {selected.reference}.
+                Verify anytime at eshuri.rw/verify-receipt with reference {selected.reference}.
               </p>
             </div>
           </div>

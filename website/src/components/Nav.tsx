@@ -29,7 +29,7 @@ export function Nav() {
       }`}
     >
       <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
-        <a href="#top" aria-label="REDEP home">
+        <a href="#top" aria-label="E-SHURI home">
           <Logo />
         </a>
 

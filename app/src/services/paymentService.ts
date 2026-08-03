@@ -1,6 +1,8 @@
 import type { FeeCategory, Payment, PaymentChannelType, Receipt } from "@/types";
 import { db, nowIso, simulate, snapshot } from "@/mocks/db";
 import { uid } from "@/lib/utils";
+import { API_URL, http, USE_MOCKS } from "@/lib/api/client";
+import { useAuthStore } from "@/stores/authStore";
 
 let refSeq = 900;
 
@@ -12,12 +14,159 @@ export interface AccountingSummary {
   byWeek: { week: string; amount: number }[];
 }
 
+/* ------------------------------------------------------------------------ */
+/* Real accounting shapes (GET /schools/:id/accounting/*)                    */
+/* ------------------------------------------------------------------------ */
+
+export interface RealPaymentRow {
+  id: string;
+  amount: number;
+  status: "PENDING" | "COMPLETED" | "FAILED";
+  paymentMethod: "MOMO" | "CARD";
+  providerRef: string | null;
+  receiptNumber: string | null;
+  paidAt: string | null;
+  createdAt: string;
+  charge: {
+    id: string;
+    student: { id: string; firstName: string; lastName: string };
+    schoolFee: { name: string; type: string; currency: string };
+    enrollment?: { schoolClass: { id: string; name: string } } | null;
+    application?: { schoolClass: { id: string; name: string } } | null;
+  };
+}
+
+export interface RealAccountingFilters {
+  search?: string;
+  status?: "PENDING" | "COMPLETED" | "FAILED";
+  feeType?: "APPLICATION" | "TUITION" | "OTHER";
+  classId?: string;
+  studentId?: string;
+  paymentMethod?: "MOMO" | "CARD";
+  page?: number;
+  limit?: number;
+}
+
+export interface RealAccountingOverview {
+  summary: {
+    activeStudents: number;
+    totalAssessed: number;
+    totalSchoolRevenue: number;
+    totalUnpaid: number;
+    collectionRate: number;
+    pendingPayments: number;
+    failedPayments: number;
+    overdueInstallments: number;
+    overdueAmount: number;
+  };
+  charts: {
+    monthlyRevenue: { month: string; revenue: number }[];
+    classesByUnpaid: { classId: string; className: string; assessed: number; paid: number; unpaid: number }[];
+    feeBreakdown: { feeType: string; feeName: string; assessed: number; paid: number; unpaid: number }[];
+    chargeStatus: { status: string; count: number }[];
+  };
+}
+
+export interface RealStudentBalance {
+  student: { id: string; firstName: string; lastName: string };
+  class: { id: string; name: string } | null;
+  totalDue: number;
+  totalPaid: number;
+  outstanding: number;
+}
+
+function query(params: Record<string, string | number | undefined>): string {
+  const usp = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") usp.set(k, String(v));
+  const s = usp.toString();
+  return s ? `?${s}` : "";
+}
+
+function mockLedgerRows(schoolId: string): RealPaymentRow[] {
+  return db.payments
+    .filter((p) => p.schoolId === schoolId)
+    .map((p) => {
+      const student = db.students.find((s) => s.id === p.studentId);
+      const fee = db.feeStructures.find((f) => f.id === p.feeStructureId);
+      return {
+        id: p.id, amount: p.amount, status: p.status, paymentMethod: "MOMO" as const,
+        providerRef: p.reference, receiptNumber: p.reference, paidAt: p.paidAt, createdAt: p.paidAt,
+        charge: {
+          id: p.id,
+          student: { id: student?.id ?? p.studentId, firstName: student?.firstName ?? "—", lastName: student?.lastName ?? "" },
+          schoolFee: { name: fee?.name ?? "Fee", type: fee?.category ?? "OTHER", currency: "RWF" },
+        },
+      };
+    });
+}
+
+/** Real backend nested payment shape, as it appears inside a child's `charges[].payments[]`. */
+interface BackendPayment {
+  id: string;
+  amount: string | number;
+  status: "PENDING" | "COMPLETED" | "FAILED";
+  paymentMethod: "MOMO" | "CARD" | null;
+  receiptNumber: string | null;
+  paidAt: string | null;
+  createdAt: string;
+}
+
+interface BackendChargeWithPayments {
+  id: string;
+  schoolFee: { name: string; type: "APPLICATION" | "TUITION" | "OTHER"; currency: string };
+  payments: BackendPayment[];
+}
+
+interface BackendChildForPayments {
+  id: string;
+  firstName: string;
+  lastName: string;
+  charges: BackendChargeWithPayments[];
+  enrollments: { schoolId: string; school: { id: string; name: string } }[];
+}
+
+function paymentMethodToChannel(method: "MOMO" | "CARD" | null): PaymentChannelType {
+  return method === "CARD" ? "CARD" : "MOMO";
+}
+
+/** Flattens every child's charges → payments into a single list, newest first. Used for both
+ *  `listByParent` and `receiptsByParent` — the real backend has no dedicated list endpoint for
+ *  either, only per-charge/per-payment lookups, so this is the closest honest equivalent. */
+async function fetchAllPaymentsForParent(): Promise<Array<{ payment: BackendPayment; charge: BackendChargeWithPayments; child: BackendChildForPayments }>> {
+  const res = await http.get<{ children: BackendChildForPayments[] }>("/parents/children");
+  const out: Array<{ payment: BackendPayment; charge: BackendChargeWithPayments; child: BackendChildForPayments }> = [];
+  for (const child of res.children) {
+    for (const charge of child.charges ?? []) {
+      for (const payment of charge.payments ?? []) out.push({ payment, charge, child });
+    }
+  }
+  return out.sort((a, b) => (b.payment.paidAt ?? b.payment.createdAt).localeCompare(a.payment.paidAt ?? a.payment.createdAt));
+}
+
 export const paymentService = {
-  // GET /api/v1/parents/:id/payments
+  // GET /api/v1/parents/:id/payments — the real backend has no flat payment-history endpoint;
+  // derived by flattening each child's charges (only COMPLETED payments are ever returned there).
   async listByParent(parentId: string): Promise<Payment[]> {
-    return simulate(
-      snapshot(db.payments.filter((p) => p.parentId === parentId).sort((a, b) => b.paidAt.localeCompare(a.paidAt))),
-    );
+    if (USE_MOCKS) {
+      return simulate(
+        snapshot(db.payments.filter((p) => p.parentId === parentId).sort((a, b) => b.paidAt.localeCompare(a.paidAt))),
+      );
+    }
+    const rows = await fetchAllPaymentsForParent();
+    return rows.map(({ payment, charge, child }) => ({
+      id: payment.id,
+      schoolId: child.enrollments[0]?.schoolId ?? "",
+      studentId: child.id,
+      parentId,
+      feeStructureId: charge.id,
+      category: charge.schoolFee.type,
+      amount: Number(payment.amount),
+      channelType: paymentMethodToChannel(payment.paymentMethod),
+      reference: payment.receiptNumber ?? payment.id,
+      status: payment.status,
+      paidAt: payment.paidAt ?? payment.createdAt,
+      termId: undefined,
+    }));
   },
 
   // GET /api/v1/schools/:id/payments?status=&category=&q=
@@ -102,17 +251,43 @@ export const paymentService = {
     return snapshot(stored);
   },
 
-  // GET /api/v1/parents/:id/receipts?q=
+  // GET /api/v1/parents/:id/receipts?q= — derived the same way as listByParent in real mode
+  // (only COMPLETED payments with a receiptNumber count as a receipt).
   async receiptsByParent(parentId: string, q?: string): Promise<Receipt[]> {
-    const parentPayments = new Set(db.payments.filter((p) => p.parentId === parentId).map((p) => p.id));
-    let out = db.receipts.filter((r) => parentPayments.has(r.paymentId));
+    if (USE_MOCKS) {
+      const parentPayments = new Set(db.payments.filter((p) => p.parentId === parentId).map((p) => p.id));
+      let out = db.receipts.filter((r) => parentPayments.has(r.paymentId));
+      if (q) {
+        const s = q.toLowerCase();
+        out = out.filter(
+          (r) => r.reference.toLowerCase().includes(s) || r.studentName.toLowerCase().includes(s) || r.schoolName.toLowerCase().includes(s),
+        );
+      }
+      return simulate(snapshot(out.sort((a, b) => b.issuedAt.localeCompare(a.issuedAt))));
+    }
+    const rows = await fetchAllPaymentsForParent();
+    let out: Receipt[] = rows
+      .filter(({ payment }) => payment.status === "COMPLETED" && payment.receiptNumber !== null)
+      .map(({ payment, charge, child }) => ({
+        id: payment.id,
+        paymentId: payment.id,
+        reference: payment.receiptNumber!,
+        schoolId: child.enrollments[0]?.schoolId ?? "",
+        schoolName: child.enrollments[0]?.school.name ?? "—",
+        studentId: child.id,
+        studentName: `${child.firstName} ${child.lastName}`,
+        parentName: "",
+        amount: Number(payment.amount),
+        category: charge.schoolFee.type,
+        channelType: paymentMethodToChannel(payment.paymentMethod),
+        termLabel: "",
+        issuedAt: payment.paidAt ?? payment.createdAt,
+      }));
     if (q) {
       const s = q.toLowerCase();
-      out = out.filter(
-        (r) => r.reference.toLowerCase().includes(s) || r.studentName.toLowerCase().includes(s) || r.schoolName.toLowerCase().includes(s),
-      );
+      out = out.filter((r) => r.reference.toLowerCase().includes(s) || r.studentName.toLowerCase().includes(s) || r.schoolName.toLowerCase().includes(s));
     }
-    return simulate(snapshot(out.sort((a, b) => b.issuedAt.localeCompare(a.issuedAt))));
+    return out;
   },
 
   // GET /api/v1/schools/:id/receipts?q=
@@ -162,4 +337,188 @@ export const paymentService = {
       byWeek,
     });
   },
+
+  /** Real accounting ledger. GET /schools/:schoolId/accounting/payments */
+  async realLedger(schoolId: string, filters: RealAccountingFilters = {}): Promise<{ items: RealPaymentRow[]; total: number }> {
+    if (USE_MOCKS) {
+      let rows = mockLedgerRows(schoolId);
+      if (filters.status) rows = rows.filter((r) => r.status === filters.status);
+      if (filters.search) {
+        const q = filters.search.toLowerCase();
+        rows = rows.filter(
+          (r) => `${r.charge.student.firstName} ${r.charge.student.lastName}`.toLowerCase().includes(q) ||
+            (r.providerRef ?? "").toLowerCase().includes(q),
+        );
+      }
+      return simulate({ items: rows, total: rows.length });
+    }
+    const res = await http.get<{ items: RealPaymentRow[]; pagination: { total: number } }>(
+      `/schools/${schoolId}/accounting/payments${query({ ...filters })}`,
+    );
+    return { items: res.items, total: res.pagination.total };
+  },
+
+  /** Real accounting summary + charts. GET /schools/:schoolId/accounting/overview */
+  async realOverview(schoolId: string): Promise<RealAccountingOverview> {
+    if (USE_MOCKS) {
+      const rows = mockLedgerRows(schoolId);
+      const completed = rows.filter((r) => r.status === "COMPLETED");
+      const totalRevenue = completed.reduce((s, r) => s + r.amount, 0);
+      return simulate({
+        summary: {
+          activeStudents: db.students.filter((s) => s.schoolId === schoolId && s.status === "ENROLLED").length,
+          totalAssessed: totalRevenue, totalSchoolRevenue: totalRevenue, totalUnpaid: 0,
+          collectionRate: rows.length ? 100 : 0,
+          pendingPayments: rows.filter((r) => r.status === "PENDING").length,
+          failedPayments: rows.filter((r) => r.status === "FAILED").length,
+          overdueInstallments: 0, overdueAmount: 0,
+        },
+        charts: { monthlyRevenue: [], classesByUnpaid: [], feeBreakdown: [], chargeStatus: [] },
+      });
+    }
+    return http.get<RealAccountingOverview>(`/schools/${schoolId}/accounting/overview`);
+  },
+
+  /** GET /schools/:schoolId/accounting/student-balances */
+  async realStudentBalances(schoolId: string, filters: { status?: string; classId?: string; search?: string } = {}): Promise<RealStudentBalance[]> {
+    if (USE_MOCKS) {
+      return simulate(
+        db.students.filter((s) => s.schoolId === schoolId && s.status === "ENROLLED").map((s) => ({
+          student: { id: s.id, firstName: s.firstName, lastName: s.lastName },
+          class: db.classes.find((c) => c.id === s.classId) ? { id: s.classId, name: db.classes.find((c) => c.id === s.classId)!.name } : null,
+          totalDue: 0, totalPaid: 0, outstanding: 0,
+        })),
+      );
+    }
+    const res = await http.get<{ students: RealStudentBalance[] }>(`/schools/${schoolId}/accounting/student-balances${query(filters)}`);
+    return res.students;
+  },
+
+  /**
+   * Charges a student for an active school fee (bills them — does not collect payment).
+   * POST /schools/:schoolId/student-charges
+   */
+  async chargeStudent(schoolId: string, input: { enrollmentId: string; schoolFeeId: string; amount?: number }): Promise<{ id: string }> {
+    if (USE_MOCKS) return simulate({ id: uid("charge") });
+    const res = await http.post<{ charge: { id: string } }>(`/schools/${schoolId}/student-charges`, input);
+    return res.charge;
+  },
+
+  /**
+   * Reconciles a pending payment against a manually-confirmed provider reference
+   * (e.g. staff checked the school's mobile money statement). Generates the receipt.
+   * POST /schools/:schoolId/accounting/payments/:paymentId/confirm
+   */
+  async confirmRealPayment(schoolId: string, paymentId: string, providerReference: string, amount: number): Promise<RealPaymentRow> {
+    if (USE_MOCKS) {
+      const rows = mockLedgerRows(schoolId);
+      return simulate(rows.find((r) => r.id === paymentId) ?? rows[0]!);
+    }
+    const res = await http.post<{ payment: RealPaymentRow }>(
+      `/schools/${schoolId}/accounting/payments/${paymentId}/confirm`,
+      { providerReference, amount },
+    );
+    return res.payment;
+  },
+
+  /** Downloads a payment receipt PDF. GET /schools/:schoolId/accounting/payments/:paymentId/receipt */
+  realReceiptUrl(schoolId: string, paymentId: string): string {
+    const base = (import.meta.env.VITE_API_URL as string | undefined) ?? "http://localhost:4000/api/v1";
+    return `${base}/schools/${schoolId}/accounting/payments/${paymentId}/receipt`;
+  },
+
+  /** GET /parents/charges/:studentChargeId/payment-destinations — real mode only. Mock mode
+   *  reuses the school's mock payment channels so the pay modal still has something to show. */
+  async chargeDestinations(chargeId: string): Promise<ChargePaymentDestination[]> {
+    if (USE_MOCKS) {
+      return simulate(
+        db.paymentChannels.map((c) => ({
+          id: c.id, type: c.type, label: c.label, accountNumber: c.accountNumber, phoneNumber: null, isActive: c.active,
+        })),
+      );
+    }
+    const res = await http.get<{ destinations: ChargePaymentDestination[] }>(`/parents/charges/${chargeId}/payment-destinations`);
+    return res.destinations;
+  },
+
+  /** POST /parents/charges/:studentChargeId/payments — initiates an async XentriPay MoMo/card
+   *  collection. Real mode only; mock mode's pay modal uses `pay()` above instead. */
+  async initiatePayment(chargeId: string, input: InitiatePaymentInput): Promise<InitiatePaymentResult> {
+    if (USE_MOCKS) {
+      return simulate(
+        { paymentId: uid("pay"), status: "COMPLETED" as const, checkoutUrl: null, instructions: null, message: "Simulated payment completed." },
+        1000,
+      );
+    }
+    const res = await http.post<{
+      payment: { id: string };
+      checkout: { checkoutUrl: string | null; instructions: string | null; status: string; message: string };
+    }>(`/parents/charges/${chargeId}/payments`, input);
+    return {
+      paymentId: res.payment.id,
+      status: "PENDING",
+      checkoutUrl: res.checkout.checkoutUrl,
+      instructions: res.checkout.instructions,
+      message: res.checkout.message,
+    };
+  },
+
+  /** GET /parents/payments/:id/status — polls XentriPay for the true state of a pending payment. */
+  async checkPaymentStatus(paymentId: string): Promise<PaymentStatusResult> {
+    if (USE_MOCKS) return simulate({ paymentId, providerStatus: "SUCCESS", status: "COMPLETED" as const });
+    const res = await http.get<{ payment: { status: "PENDING" | "COMPLETED" | "FAILED" }; providerStatus: string }>(
+      `/parents/payments/${paymentId}/status`,
+    );
+    return { paymentId, providerStatus: res.providerStatus, status: res.payment.status };
+  },
+
+  /**
+   * GET /parents/payments/:id/receipt — binary PDF download. The shared `http` client only
+   * handles JSON envelopes, so this mirrors its auth/credentials handling directly and returns
+   * a Blob instead.
+   */
+  async downloadReceiptBlob(paymentId: string): Promise<Blob> {
+    if (USE_MOCKS) throw { code: "NOT_SUPPORTED", message: "Receipt PDFs aren't generated in demo mode.", status: 400 };
+    const accessToken = useAuthStore.getState().session?.accessToken;
+    const res = await fetch(`${API_URL}/parents/payments/${paymentId}/receipt`, {
+      credentials: "include",
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+    });
+    if (!res.ok) throw { code: "RECEIPT_NOT_FOUND", message: "Payment receipt not found.", status: res.status };
+    return res.blob();
+  },
 };
+
+/** A parent-facing payment destination for a specific fee charge. */
+export interface ChargePaymentDestination {
+  id: string;
+  type: string;
+  label: string;
+  accountNumber?: string | null;
+  phoneNumber?: string | null;
+  isActive: boolean;
+}
+
+export interface InitiatePaymentInput {
+  paymentMode: "FULL" | "INSTALLMENTS";
+  paymentMethod: "MOMO" | "CARD";
+  paymentDestinationId: string;
+  paymentPhone?: string;
+  amount: number;
+  partialPaymentReason?: string;
+  remainingPaymentDate?: string;
+}
+
+export interface InitiatePaymentResult {
+  paymentId: string;
+  status: "PENDING" | "COMPLETED" | "FAILED";
+  checkoutUrl: string | null;
+  instructions: string | null;
+  message: string;
+}
+
+export interface PaymentStatusResult {
+  paymentId: string;
+  providerStatus: string;
+  status: "PENDING" | "COMPLETED" | "FAILED";
+}

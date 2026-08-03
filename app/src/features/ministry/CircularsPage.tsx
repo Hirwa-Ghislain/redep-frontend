@@ -11,12 +11,38 @@ import { Checkbox, Input, Select, Textarea } from "@/components/ui/Input";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
 import { CardSkeleton } from "@/components/ui/Skeleton";
+import { UnderDevelopment } from "@/components/ui/UnderDevelopment";
 import { P } from "@/config/permissions";
+import { USE_MOCKS } from "@/lib/api/client";
 import { commsService } from "@/services/commsService";
 import { formatDate } from "@/lib/format";
 import { toast } from "@/stores/uiStore";
 import type { ApiError } from "@/lib/api/client";
 import type { Announcement } from "@/types";
+
+/**
+ * National circular broadcast is a SUPER_ADMIN-only capability (`POST /admin/broadcast`, a
+ * different portal) — the real backend has no education-authority-facing endpoint for
+ * publishing national circulars. Mock mode keeps the full compose/publish demo below; live
+ * mode shows an honest "not available" state instead of a broken/fake compose flow.
+ */
+export default function CircularsPage() {
+  if (!USE_MOCKS) {
+    return (
+      <PageTransition>
+        <PageHeader
+          title="Circulars"
+          description="National notices published by the ministry to schools across the platform."
+        />
+        <UnderDevelopment
+          title="National circulars aren't available yet"
+          description="Publishing national circulars from an education-authority account isn't supported by the backend yet — national broadcasts are currently a platform-administrator capability. Contact a platform administrator if you need to send an urgent notice."
+        />
+      </PageTransition>
+    );
+  }
+  return <CircularsPageMock />;
+}
 
 const AUDIENCE_LABEL: Record<Announcement["audience"], string> = {
   ALL: "Everyone",
@@ -35,7 +61,7 @@ const CATEGORY_LABEL: Record<Announcement["category"], string> = {
   CIRCULAR: "Circular",
 };
 
-export default function CircularsPage() {
+function CircularsPageMock() {
   const qc = useQueryClient();
   const [composeOpen, setComposeOpen] = useState(false);
   const [title, setTitle] = useState("");

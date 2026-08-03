@@ -1,8 +1,8 @@
-# REDEP — Rwanda Education Digital Ecosystem Platform
+# E-SHURI — Rwanda Education Digital Ecosystem Platform
 
 **Frontend Master Plan & Architecture** — v1.0 (2026-07)
 
-REDEP is a centralized multi-school platform connecting Schools, Parents, Teachers, Job
+E-SHURI is a centralized multi-school platform connecting Schools, Parents, Teachers, Job
 Applicants, and Education Authorities. This repo contains two frontend projects:
 
 | Directory  | What it is                                                                | Stack |

@@ -24,7 +24,7 @@ export function AuthLayout({ children, aside }: { children: ReactNode; aside?: R
 
       {/* header */}
       <header className="relative flex justify-center pt-10 pb-8">
-        <Link to="/login" aria-label="REDEP home">
+        <Link to="/login" aria-label="E-SHURI home">
           <Logo />
         </Link>
       </header>
@@ -72,7 +72,7 @@ export function AuthLayout({ children, aside }: { children: ReactNode; aside?: R
       {/* footer */}
       <footer className="relative pb-8 text-center">
         <p className="text-[12px] text-faint">
-          © 2026 REDEP — Rwanda Education Digital Ecosystem Platform · Demo environment, payments simulated
+          © 2026 E-SHURI — Rwanda Education Digital Ecosystem Platform · Demo environment, payments simulated
         </p>
       </footer>
     </div>

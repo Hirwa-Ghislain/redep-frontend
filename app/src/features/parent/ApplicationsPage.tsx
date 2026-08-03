@@ -14,8 +14,8 @@ import { Timeline } from "@/components/ui/Timeline";
 import { useAuth } from "@/hooks/useAuth";
 import { admissionService } from "@/services/admissionService";
 import { schoolService } from "@/services/schoolService";
-import { formatDate, formatDateTime } from "@/lib/format";
-import { ADMISSION_STATUS, DOC_STATUS, LEVEL_LABEL } from "@/lib/status";
+import { formatDate, formatDateTime, fullName } from "@/lib/format";
+import { ADMISSION_STATUS, BACKEND_APPLICATION_STATUS, DOC_STATUS, LEVEL_LABEL } from "@/lib/status";
 import type { AdmissionApplication } from "@/types";
 
 export default function ApplicationsPage() {
@@ -24,17 +24,18 @@ export default function ApplicationsPage() {
 
   const { data: applications = [], isLoading } = useQuery({
     queryKey: ["applications", user?.id],
-    queryFn: () => admissionService.listByParent(user!.id),
+    queryFn: () => admissionService.listByParent(user!.id, user ? fullName(user) : ""),
     enabled: Boolean(user),
   });
   const { data: schools = [] } = useQuery({ queryKey: ["schools-all"], queryFn: () => schoolService.list() });
-  const schoolName = (id: string) => schools.find((s) => s.id === id)?.name ?? "School";
+  const schoolName = (app: AdmissionApplication) => app.schoolName ?? schools.find((s) => s.id === app.schoolId)?.name ?? "School";
+  const levelOrClass = (app: AdmissionApplication) => (app.levelApplied ? LEVEL_LABEL[app.levelApplied] : (app.className ?? "—"));
 
   const open = applications.filter((a) => !["APPROVED", "REJECTED"].includes(a.status));
   const decided = applications.filter((a) => ["APPROVED", "REJECTED"].includes(a.status));
 
   const renderRow = (app: AdmissionApplication) => {
-    const meta = ADMISSION_STATUS[app.status];
+    const meta = app.backendStatus ? BACKEND_APPLICATION_STATUS[app.backendStatus] : ADMISSION_STATUS[app.status];
     return (
       <button
         key={app.id}
@@ -48,15 +49,17 @@ export default function ApplicationsPage() {
         <div className="min-w-0 flex-1">
           <p className="text-[13px] font-medium text-ink">
             {app.childFirstName} {app.childLastName}
-            <span className="font-normal text-muted text-[12.5px]"> · {LEVEL_LABEL[app.levelApplied]}</span>
+            <span className="font-normal text-muted text-[12.5px]"> · {levelOrClass(app)}</span>
           </p>
           <p className="text-[12px] text-muted mt-0.5">
-            {schoolName(app.schoolId)} — submitted {formatDate(app.submittedAt)}
+            {schoolName(app)} — submitted {app.submittedAt ? formatDate(app.submittedAt) : "—"}
           </p>
         </div>
-        <span className="inline-flex items-center gap-1 text-[12px] text-faint tnum">
-          <Paperclip className="size-3.5" /> {app.documents.length}
-        </span>
+        {app.documents.length > 0 && (
+          <span className="inline-flex items-center gap-1 text-[12px] text-faint tnum">
+            <Paperclip className="size-3.5" /> {app.documents.length}
+          </span>
+        )}
         <Badge variant={meta.variant} dot>{meta.label}</Badge>
       </button>
     );
@@ -98,11 +101,11 @@ export default function ApplicationsPage() {
                 <CardHeader
                   className="px-4 pt-4 mb-0"
                   title="In progress"
-                  description="The school is reviewing these."
+                  description="Awaiting document validation or payment — automatic, not staff review."
                   action={<Badge variant="warning" className="tnum">{open.length}</Badge>}
                 />
                 {open.length === 0 ? (
-                  <p className="px-4 py-6 text-[12.5px] text-muted">Nothing in review right now.</p>
+                  <p className="px-4 py-6 text-[12.5px] text-muted">Nothing in progress right now.</p>
                 ) : (
                   <Stagger className="divide-y divide-line mt-2">
                     {open.map((app) => (
@@ -117,7 +120,7 @@ export default function ApplicationsPage() {
                   <CardHeader
                     className="px-4 pt-4 mb-0"
                     title="Decided"
-                    description="Approved children appear under My children automatically."
+                    description="Admitted children appear under My children automatically."
                     action={<Badge variant="neutral" className="tnum">{decided.length}</Badge>}
                   />
                   <div className="divide-y divide-line mt-2">{decided.map(renderRow)}</div>
@@ -133,10 +136,10 @@ export default function ApplicationsPage() {
             <CardHeader title="How admissions work" />
             <Timeline
               events={[
-                { title: "Submit", description: "Child's details plus documents — five minutes.", tone: "success" },
-                { title: "School review", description: "The admissions office verifies documents; they may request more information.", tone: "success" },
-                { title: "Decision", description: "Approve, waitlist or decline — you're notified instantly.", tone: "warning" },
-                { title: "Enrolled", description: "Approval reserves the seat and links your child to this account.", tone: "default" },
+                { title: "Submit", description: "Child's details plus the annual report — a few minutes.", tone: "success" },
+                { title: "Automatic validation", description: "OCR reads the report and checks it against the class's admission criteria instantly — no human reviewer.", tone: "success" },
+                { title: "Pay to confirm", description: "Application + tuition fees, payable from the Payments page.", tone: "warning" },
+                { title: "Admitted", description: "Once required fees are paid, the seat is confirmed automatically.", tone: "default" },
               ]}
             />
           </Card>
@@ -145,9 +148,7 @@ export default function ApplicationsPage() {
             <CardHeader title="Documents you'll need" />
             <ul className="space-y-2">
               {[
-                ["Birth certificate", "Required for every application"],
-                ["Previous school records", "For transfers and upper levels"],
-                ["Parent / guardian ID", "Sometimes requested by the school"],
+                ["Annual report / transcript", "Required — the only document, OCR-validated automatically"],
               ].map(([doc, hint]) => (
                 <li key={doc} className="flex items-start gap-2.5">
                   <FileCheck2 className="size-4 text-primary-deep shrink-0 mt-0.5" aria-hidden />
@@ -183,44 +184,52 @@ export default function ApplicationsPage() {
         open={Boolean(selected)}
         onClose={() => setSelected(null)}
         title={selected ? `${selected.childFirstName} ${selected.childLastName}` : ""}
-        description={selected ? `${schoolName(selected.schoolId)} · ${LEVEL_LABEL[selected.levelApplied]}` : undefined}
+        description={selected ? `${schoolName(selected)} · ${levelOrClass(selected)}` : undefined}
       >
         {selected && (
           <div className="space-y-6">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wide text-faint mb-3">Progress</p>
-              <Timeline
-                events={selected.timeline.map((e) => ({
-                  title: e.status === "NOTE" ? "Note" : ADMISSION_STATUS[e.status as keyof typeof ADMISSION_STATUS]?.label ?? e.status,
-                  meta: formatDateTime(e.at),
-                  description: e.note ?? (e.actor ? `by ${e.actor}` : undefined),
-                  tone:
-                    e.status === "APPROVED" ? "success" :
-                    e.status === "REJECTED" ? "danger" :
-                    e.status === "INFO_REQUESTED" ? "warning" : "default",
-                }))}
-              />
+              <p className="text-[11px] font-bold uppercase tracking-wide text-faint mb-3">Status</p>
+              {selected.timeline.length > 0 ? (
+                <Timeline
+                  events={selected.timeline.map((e) => ({
+                    title: e.status === "NOTE" ? "Note" : ADMISSION_STATUS[e.status as keyof typeof ADMISSION_STATUS]?.label ?? e.status,
+                    meta: formatDateTime(e.at),
+                    description: e.note ?? (e.actor ? `by ${e.actor}` : undefined),
+                    tone:
+                      e.status === "APPROVED" ? "success" :
+                      e.status === "REJECTED" ? "danger" :
+                      e.status === "INFO_REQUESTED" ? "warning" : "default",
+                  }))}
+                />
+              ) : (
+                <div className="flex items-center gap-2.5">
+                  <Badge variant={(selected.backendStatus ? BACKEND_APPLICATION_STATUS[selected.backendStatus] : ADMISSION_STATUS[selected.status]).variant} dot>
+                    {(selected.backendStatus ? BACKEND_APPLICATION_STATUS[selected.backendStatus] : ADMISSION_STATUS[selected.status]).label}
+                  </Badge>
+                  {selected.admittedAt && <span className="text-[12.5px] text-muted">Admitted {formatDate(selected.admittedAt)}</span>}
+                </div>
+              )}
             </div>
             <div>
               <p className="text-[11px] font-bold uppercase tracking-wide text-faint mb-3">Documents</p>
-              <ul className="space-y-2">
-                {selected.documents.map((d) => {
-                  const meta = DOC_STATUS[d.status];
-                  return (
-                    <li key={d.id} className="flex items-center gap-2.5 rounded-(--radius-ctl) border border-line px-3 py-2.5 text-[13px]">
-                      <FileText className="size-4 text-primary-deep shrink-0" />
-                      <span className="truncate flex-1 text-ink">{d.fileName}</span>
-                      <Badge variant={meta.variant}>{meta.label}</Badge>
-                    </li>
-                  );
-                })}
-              </ul>
+              {selected.documents.length > 0 ? (
+                <ul className="space-y-2">
+                  {selected.documents.map((d) => {
+                    const meta = DOC_STATUS[d.status];
+                    return (
+                      <li key={d.id} className="flex items-center gap-2.5 rounded-(--radius-ctl) border border-line px-3 py-2.5 text-[13px]">
+                        <FileText className="size-4 text-primary-deep shrink-0" />
+                        <span className="truncate flex-1 text-ink">{d.fileName}</span>
+                        <Badge variant={meta.variant}>{meta.label}</Badge>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <p className="text-[12.5px] text-muted">Document detail isn't listed here — it was validated automatically at submission.</p>
+              )}
             </div>
-            {selected.status === "INFO_REQUESTED" && (
-              <div className="rounded-xl bg-gold-soft px-4 py-3 text-[13px] text-gold-deep">
-                The school asked for more information — check your messages, then update your documents here.
-              </div>
-            )}
           </div>
         )}
       </Drawer>

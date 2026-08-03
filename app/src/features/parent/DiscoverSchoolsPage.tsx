@@ -56,7 +56,7 @@ export default function DiscoverSchoolsPage() {
     <PageTransition>
       <PageHeader
         title="Find schools"
-        description="Search every school on REDEP — live seat availability, fees and reputation in one place."
+        description="Search every school on E-SHURI — live seat availability, fees and reputation in one place."
       />
 
       {/* Filter row */}
@@ -117,9 +117,11 @@ export default function DiscoverSchoolsPage() {
                         <MapPin className="size-3 shrink-0" /> {school.district} · {school.sector}
                       </p>
                     </div>
-                    <span className="flex shrink-0 items-center gap-1 text-[12px] font-semibold text-gold-deep tnum">
-                      <Star className="size-3 fill-gold text-gold" /> {school.satisfactionScore.toFixed(1)}
-                    </span>
+                    {school.satisfactionScore !== undefined && (
+                      <span className="flex shrink-0 items-center gap-1 text-[12px] font-semibold text-gold-deep tnum">
+                        <Star className="size-3 fill-gold text-gold" /> {school.satisfactionScore.toFixed(1)}
+                      </span>
+                    )}
                   </div>
 
                   {/* Badges */}
@@ -236,7 +238,9 @@ export default function DiscoverSchoolsPage() {
               <tr>
                 <td className="text-muted pr-4">Satisfaction</td>
                 {compare.map((s) => (
-                  <td key={s.id} className="tnum font-semibold text-gold-deep">★ {s.satisfactionScore.toFixed(1)}</td>
+                  <td key={s.id} className="tnum font-semibold text-gold-deep">
+                    {s.satisfactionScore !== undefined ? `★ ${s.satisfactionScore.toFixed(1)}` : "—"}
+                  </td>
                 ))}
               </tr>
               <tr>
@@ -245,7 +249,7 @@ export default function DiscoverSchoolsPage() {
               </tr>
               <tr>
                 <td className="text-muted pr-4">Founded</td>
-                {compare.map((s) => <td key={s.id} className="tnum">{s.foundedYear}</td>)}
+                {compare.map((s) => <td key={s.id} className="tnum">{s.foundedYear > 0 ? s.foundedYear : "—"}</td>)}
               </tr>
             </tbody>
           </table>

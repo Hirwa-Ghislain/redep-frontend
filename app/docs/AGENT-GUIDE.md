@@ -1,4 +1,4 @@
-# REDEP App — Portal Implementation Guide
+# E-SHURI App — Portal Implementation Guide
 
 You are implementing pages inside an existing, fully-scaffolded React app. The foundation
 (design system, data layer, routing, auth) is DONE and must not be modified. Your job is to

@@ -8,23 +8,31 @@ export interface FileDropProps {
   /** Names of already-attached files (controlled). */
   files: string[];
   onChange: (fileNames: string[]) => void;
+  /**
+   * Optional — receives the real `File` blobs just picked/dropped (not the cumulative list), so a
+   * caller that needs to actually upload the file (multipart `FormData`) can keep it in state. Names
+   * alone (`onChange`) are enough for display-only/mock usage.
+   */
+  onFilesChange?: (files: File[]) => void;
   accept?: string;
   multiple?: boolean;
   className?: string;
 }
 
 /**
- * Document attach control. In mock mode we only keep file names — the HTTP layer
- * will send real `File` objects as multipart/form-data when the backend lands.
+ * Document attach control. Exposes file names via `onChange` for display/mock use, and the real
+ * `File` blobs via `onFilesChange` for callers that need to send multipart/form-data.
  */
-export function FileDrop({ label, hint, files, onChange, accept = ".pdf,.jpg,.png", multiple = true, className }: FileDropProps) {
+export function FileDrop({ label, hint, files, onChange, onFilesChange, accept = ".pdf,.jpg,.png", multiple = true, className }: FileDropProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
 
   const addFiles = (list: FileList | null) => {
     if (!list) return;
-    const names = Array.from(list).map((f) => f.name);
+    const picked = Array.from(list);
+    const names = picked.map((f) => f.name);
     onChange(multiple ? [...new Set([...files, ...names])] : names.slice(0, 1));
+    onFilesChange?.(multiple ? picked : picked.slice(0, 1));
   };
 
   return (

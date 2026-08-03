@@ -1,5 +1,5 @@
 /**
- * REDEP branded "assembling logo" splash / preloader.
+ * E-SHURI branded "assembling logo" splash / preloader.
  *
  * Plays ONCE per full page load, above all content, then lifts away with a
  * two-tone curtain. The mark is Rwanda's map filled with a centroid-sorted dot
@@ -239,7 +239,7 @@ export function Splash() {
             viewBox={VIEW_BOX}
             className="w-[min(80vw,400px)] h-auto"
             role="img"
-            aria-label="REDEP — Rwanda Education Digital Ecosystem Platform"
+            aria-label="E-SHURI — Rwanda Education Digital Ecosystem Platform"
           >
             {/* color wash fill of the mark */}
             <path ref={fillRef} d={OUTLINE_PATH} fill={TOKENS.accent} style={{ opacity: 0 }} />
@@ -273,7 +273,7 @@ export function Splash() {
                 letterSpacing: "0.06em",
               }}
             >
-              REDEP
+              E-SHURI
             </text>
             <text
               ref={descRef}

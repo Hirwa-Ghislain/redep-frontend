@@ -9,110 +9,55 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Input, Select, Textarea } from "@/components/ui/Input";
+import { Input, Textarea } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { CardSkeleton } from "@/components/ui/Skeleton";
 import { StatCard } from "@/components/ui/StatCard";
 import { useAuth } from "@/hooks/useAuth";
 import { P } from "@/config/permissions";
-import { academicService } from "@/services/academicService";
 import { recruitmentService } from "@/services/recruitmentService";
-import { schoolService } from "@/services/schoolService";
 import { toast } from "@/stores/uiStore";
-import { formatDate, formatRWF } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { VACANCY_STATUS } from "@/lib/status";
 import { cn } from "@/lib/utils";
 import type { ApiError } from "@/lib/api/client";
-import type { EmploymentType, PositionType, Vacancy } from "@/types";
-
-const POSITION_LABEL: Record<PositionType, string> = {
-  TEACHER: "Teacher",
-  ACCOUNTANT: "Accountant",
-  ADMINISTRATOR: "Administrator",
-  LIBRARIAN: "Librarian",
-  DRIVER: "Driver",
-  OTHER: "Other",
-};
-
-const EMPLOYMENT_LABEL: Record<EmploymentType, string> = {
-  FULL_TIME: "Full-time",
-  PART_TIME: "Part-time",
-  CONTRACT: "Contract",
-};
+import type { Vacancy } from "@/types";
 
 interface VacancyForm {
   title: string;
-  positionType: PositionType;
-  subject: string;
-  employmentType: EmploymentType;
-  salaryMin: string;
-  salaryMax: string;
   deadline: string;
   description: string;
   requirements: string;
 }
 
-const EMPTY_FORM: VacancyForm = {
-  title: "",
-  positionType: "TEACHER",
-  subject: "",
-  employmentType: "FULL_TIME",
-  salaryMin: "",
-  salaryMax: "",
-  deadline: "",
-  description: "",
-  requirements: "",
-};
+const EMPTY_FORM: VacancyForm = { title: "", deadline: "", description: "", requirements: "" };
 
 export default function RecruitmentPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const schoolId = user!.schoolId!;
   const [postOpen, setPostOpen] = useState(false);
   const [form, setForm] = useState<VacancyForm>(EMPTY_FORM);
   const [closeTarget, setCloseTarget] = useState<Vacancy | null>(null);
 
   const { data: vacancies = [], isLoading } = useQuery({
-    queryKey: ["vacancies", user?.schoolId],
-    queryFn: () => recruitmentService.vacanciesBySchool(user!.schoolId!),
-    enabled: Boolean(user?.schoolId),
+    queryKey: ["vacancies", schoolId],
+    queryFn: () => recruitmentService.vacanciesBySchool(schoolId),
   });
-
-  const { data: school } = useQuery({
-    queryKey: ["school", user?.schoolId],
-    queryFn: () => schoolService.get(user!.schoolId!),
-    enabled: Boolean(user?.schoolId),
-  });
-
-  const { data: term } = useQuery({ queryKey: ["current-term"], queryFn: () => academicService.currentTerm() });
 
   const openCount = vacancies.filter((v) => v.status === "OPEN").length;
   const totalApplicants = vacancies.reduce((s, v) => s + v.applicantsCount, 0);
-  const closedThisTerm = term
-    ? vacancies.filter((v) => v.status === "CLOSED" && v.postedAt >= term.startDate).length
-    : 0;
+  const closedCount = vacancies.filter((v) => v.status === "CLOSED").length;
 
   const post = useMutation({
-    mutationFn: () => {
-      const min = Number(form.salaryMin);
-      const max = Number(form.salaryMax);
-      return recruitmentService.saveVacancy({
-        schoolId: user!.schoolId!,
-        schoolName: school!.name,
-        district: school!.district,
-        title: form.title.trim(),
-        positionType: form.positionType,
-        subject: form.positionType === "TEACHER" && form.subject.trim() ? form.subject.trim() : undefined,
-        employmentType: form.employmentType,
-        salaryRange: min > 0 && max > 0 ? { min, max } : undefined,
-        deadline: form.deadline,
-        description: form.description.trim(),
-        requirements: form.requirements
-          .split("\n")
-          .map((r) => r.trim())
-          .filter(Boolean),
-      });
-    },
+    mutationFn: () =>
+      recruitmentService.saveVacancy({
+        schoolId, schoolName: "", district: "",
+        title: form.title.trim(), positionType: "OTHER", employmentType: "FULL_TIME",
+        deadline: form.deadline, description: form.description.trim(),
+        requirements: form.requirements.split("\n").map((r) => r.trim()).filter(Boolean),
+      }),
     onSuccess: (v) => {
       setPostOpen(false);
       setForm(EMPTY_FORM);
@@ -123,7 +68,7 @@ export default function RecruitmentPage() {
   });
 
   const close = useMutation({
-    mutationFn: (id: string) => recruitmentService.closeVacancy(id),
+    mutationFn: (id: string) => recruitmentService.closeVacancy(schoolId, id),
     onSuccess: (v) => {
       setCloseTarget(null);
       void qc.invalidateQueries({ queryKey: ["vacancies"] });
@@ -139,28 +84,17 @@ export default function RecruitmentPage() {
         description="Post vacancies and track every applicant through the hiring pipeline."
         actions={
           <Can permission={P.RECRUITMENT_MANAGE}>
-            <Button
-              icon={<Plus className="size-4" />}
-              disabled={!school}
-              onClick={() => { setForm(EMPTY_FORM); setPostOpen(true); }}
-            >
+            <Button icon={<Plus className="size-4" />} onClick={() => { setForm(EMPTY_FORM); setPostOpen(true); }}>
               Post vacancy
             </Button>
           </Can>
         }
       />
 
-      {/* KPI strip */}
       <Stagger className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-        <StaggerItem>
-          <StatCard label="Open vacancies" value={String(openCount)} icon={Briefcase} tone="primary" />
-        </StaggerItem>
-        <StaggerItem>
-          <StatCard label="Total applicants" value={String(totalApplicants)} icon={Users} tone="sky" />
-        </StaggerItem>
-        <StaggerItem>
-          <StatCard label={`Closed${term ? ` — ${term.label}` : " this term"}`} value={String(closedThisTerm)} icon={Archive} tone="gold" />
-        </StaggerItem>
+        <StaggerItem><StatCard label="Open vacancies" value={String(openCount)} icon={Briefcase} tone="primary" /></StaggerItem>
+        <StaggerItem><StatCard label="Total applicants" value={String(totalApplicants)} icon={Users} tone="sky" /></StaggerItem>
+        <StaggerItem><StatCard label="Closed" value={String(closedCount)} icon={Archive} tone="gold" /></StaggerItem>
       </Stagger>
 
       {isLoading ? (
@@ -173,9 +107,7 @@ export default function RecruitmentPage() {
           className="mt-4"
           action={
             <Can permission={P.RECRUITMENT_MANAGE}>
-              <Button icon={<Plus className="size-4" />} disabled={!school} onClick={() => { setForm(EMPTY_FORM); setPostOpen(true); }}>
-                Post vacancy
-              </Button>
+              <Button icon={<Plus className="size-4" />} onClick={() => { setForm(EMPTY_FORM); setPostOpen(true); }}>Post vacancy</Button>
             </Can>
           }
         />
@@ -191,19 +123,9 @@ export default function RecruitmentPage() {
                     <h3 className="font-display font-bold text-[14px] text-ink">{v.title}</h3>
                     <Badge variant={meta.variant} dot>{meta.label}</Badge>
                   </div>
-                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                    <Badge variant="neutral">{POSITION_LABEL[v.positionType]}</Badge>
-                    {v.subject && <Badge variant="info">{v.subject}</Badge>}
-                    <span className="text-[12px] text-muted">{EMPLOYMENT_LABEL[v.employmentType]}</span>
-                  </div>
                   <p className="text-[12.5px] text-muted line-clamp-2 mt-2 flex-1">{v.description}</p>
                   <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 mt-3 pt-3 border-t border-line text-[12px]">
-                    <span
-                      className={cn(
-                        "inline-flex items-center gap-1.5",
-                        pastDeadline && v.status === "OPEN" ? "text-clay-deep font-medium" : "text-muted",
-                      )}
-                    >
+                    <span className={cn("inline-flex items-center gap-1.5", pastDeadline && v.status === "OPEN" ? "text-clay-deep font-medium" : "text-muted")}>
                       <CalendarDays className="size-3.5" aria-hidden />
                       <span className="tnum">{formatDate(v.deadline)}</span>
                       {pastDeadline && v.status === "OPEN" && " · past deadline"}
@@ -214,12 +136,7 @@ export default function RecruitmentPage() {
                     </span>
                     {v.status === "OPEN" && (
                       <Can permission={P.RECRUITMENT_MANAGE}>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          className="ml-auto"
-                          onClick={(e) => { e.stopPropagation(); setCloseTarget(v); }}
-                        >
+                        <Button variant="secondary" size="sm" className="ml-auto" onClick={(e) => { e.stopPropagation(); setCloseTarget(v); }}>
                           Close
                         </Button>
                       </Can>
@@ -232,7 +149,6 @@ export default function RecruitmentPage() {
         </Stagger>
       )}
 
-      {/* Post vacancy */}
       <Modal
         open={postOpen}
         onClose={() => !post.isPending && setPostOpen(false)}
@@ -242,102 +158,25 @@ export default function RecruitmentPage() {
         footer={
           <>
             <Button variant="ghost" onClick={() => setPostOpen(false)} disabled={post.isPending}>Cancel</Button>
-            <Button
-              loading={post.isPending}
-              disabled={!form.title.trim() || !form.deadline || !form.description.trim()}
-              onClick={() => post.mutate()}
-            >
+            <Button loading={post.isPending} disabled={!form.title.trim() || !form.deadline || !form.description.trim()} onClick={() => post.mutate()}>
               Publish vacancy
             </Button>
           </>
         }
       >
         <div className="space-y-3.5">
-          <Input
-            label="Title"
-            placeholder="E.g. Mathematics teacher — upper secondary"
-            value={form.title}
-            onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-            required
-          />
-          <div className="grid sm:grid-cols-2 gap-3">
-            <Select
-              label="Position type"
-              value={form.positionType}
-              onChange={(e) => setForm((f) => ({ ...f, positionType: e.target.value as PositionType }))}
-            >
-              {(Object.keys(POSITION_LABEL) as PositionType[]).map((p) => (
-                <option key={p} value={p}>{POSITION_LABEL[p]}</option>
-              ))}
-            </Select>
-            <Select
-              label="Employment type"
-              value={form.employmentType}
-              onChange={(e) => setForm((f) => ({ ...f, employmentType: e.target.value as EmploymentType }))}
-            >
-              {(Object.keys(EMPLOYMENT_LABEL) as EmploymentType[]).map((t) => (
-                <option key={t} value={t}>{EMPLOYMENT_LABEL[t]}</option>
-              ))}
-            </Select>
-          </div>
-          {form.positionType === "TEACHER" && (
-            <Input
-              label="Subject"
-              placeholder="E.g. Mathematics"
-              value={form.subject}
-              onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))}
-            />
-          )}
-          <div className="grid sm:grid-cols-3 gap-3">
-            <Input
-              label="Salary min (RWF)"
-              type="number"
-              min={0}
-              placeholder="Optional"
-              value={form.salaryMin}
-              onChange={(e) => setForm((f) => ({ ...f, salaryMin: e.target.value }))}
-            />
-            <Input
-              label="Salary max (RWF)"
-              type="number"
-              min={0}
-              placeholder="Optional"
-              value={form.salaryMax}
-              onChange={(e) => setForm((f) => ({ ...f, salaryMax: e.target.value }))}
-            />
-            <Input
-              label="Deadline"
-              type="date"
-              value={form.deadline}
-              onChange={(e) => setForm((f) => ({ ...f, deadline: e.target.value }))}
-              required
-            />
-          </div>
+          <Input label="Title" placeholder="E.g. Mathematics teacher — upper secondary" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} required />
+          <Input label="Deadline" type="date" value={form.deadline} onChange={(e) => setForm((f) => ({ ...f, deadline: e.target.value }))} required />
+          <Textarea label="Description" rows={4} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} required />
           <Textarea
-            label="Description"
-            placeholder="What the role involves, who you're looking for…"
-            rows={4}
-            value={form.description}
-            onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-            required
-          />
-          <Textarea
-            label="Requirements"
-            hint="One requirement per line."
-            placeholder={"Bachelor's degree in Education\n3+ years teaching experience"}
-            rows={4}
+            label="Requirements" hint="One requirement per line." rows={4}
             value={form.requirements}
             onChange={(e) => setForm((f) => ({ ...f, requirements: e.target.value }))}
+            placeholder={"Bachelor's degree in Education\n3+ years teaching experience"}
           />
-          {Number(form.salaryMin) > 0 && Number(form.salaryMax) > 0 && (
-            <p className="text-[12.5px] text-muted">
-              Advertised salary: <span className="tnum font-medium text-ink">{formatRWF(Number(form.salaryMin))} – {formatRWF(Number(form.salaryMax))}</span> per month.
-            </p>
-          )}
         </div>
       </Modal>
 
-      {/* Close vacancy confirm */}
       <Modal
         open={Boolean(closeTarget)}
         onClose={() => !close.isPending && setCloseTarget(null)}
@@ -347,15 +186,11 @@ export default function RecruitmentPage() {
         footer={
           <>
             <Button variant="ghost" onClick={() => setCloseTarget(null)} disabled={close.isPending}>Cancel</Button>
-            <Button variant="danger" loading={close.isPending} onClick={() => closeTarget && close.mutate(closeTarget.id)}>
-              Close vacancy
-            </Button>
+            <Button variant="danger" loading={close.isPending} onClick={() => closeTarget && close.mutate(closeTarget.id)}>Close vacancy</Button>
           </>
         }
       >
-        <p className="text-[13.5px] text-muted">
-          Candidates already in the pipeline keep their place — you can still move them through stages.
-        </p>
+        <p className="text-[13.5px] text-muted">Candidates already in the pipeline keep their place.</p>
       </Modal>
     </PageTransition>
   );

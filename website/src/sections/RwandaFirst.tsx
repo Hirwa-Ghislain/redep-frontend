@@ -45,7 +45,7 @@ export function RwandaFirst() {
               Not adapted for Rwanda. <span className="text-primary">Designed for it.</span>
             </h2>
             <p className="mt-4 text-[15.5px] leading-relaxed text-muted max-w-md">
-              Payment rails, connectivity realities, national reporting lines — REDEP's features start
+              Payment rails, connectivity realities, national reporting lines — E-SHURI's features start
               from how education actually works here, from Kigali to the most rural sector.
             </p>
           </Reveal>

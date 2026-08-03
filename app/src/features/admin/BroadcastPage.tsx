@@ -12,27 +12,39 @@ import { useAuth } from "@/hooks/useAuth";
 import { adminService } from "@/services/adminService";
 import { toast } from "@/stores/uiStore";
 import { formatDateTime, fullName } from "@/lib/format";
+import type { BackendRole } from "@/types";
 
-type Audience = "ALL" | "PARENTS" | "TEACHERS" | "SCHOOLS";
+/** "ALL" plus the real 7 backend roles (`prisma.Role`) — matches the admin module's
+ *  `broadcastSchema.audience` exactly, so no option here can fail server-side validation. */
+type Audience = "ALL" | BackendRole;
 
 const AUDIENCE_LABEL: Record<Audience, string> = {
   ALL: "Everyone",
-  PARENTS: "Parents",
-  TEACHERS: "Teachers",
-  SCHOOLS: "Schools",
+  SUPER_ADMIN: "System admins",
+  SCHOOL_ADMIN: "School administrators",
+  TEACHER: "Teachers",
+  ACCOUNTANT: "Accountants",
+  PARENT: "Parents",
+  APPLICANT: "Job applicants",
+  EDUCATION_AUTHORITY: "Ministry accounts",
 };
 
 const AUDIENCE_REACH: Record<Audience, string> = {
-  ALL: "This will notify every account on the platform — parents, teachers, staff and school administrators.",
-  PARENTS: "This will notify every parent account.",
-  TEACHERS: "This will notify every teacher account.",
-  SCHOOLS: "This will notify every school administrator and staff account.",
+  ALL: "This will notify every account on the platform.",
+  SUPER_ADMIN: "This will notify every system administrator account.",
+  SCHOOL_ADMIN: "This will notify every school administrator account.",
+  TEACHER: "This will notify every teacher account.",
+  ACCOUNTANT: "This will notify every school accountant account.",
+  PARENT: "This will notify every parent account.",
+  APPLICANT: "This will notify every job applicant account.",
+  EDUCATION_AUTHORITY: "This will notify every ministry (education authority) account.",
 };
 
 interface SentItem {
   id: number;
   title: string;
   audience: Audience;
+  recipientCount: number;
   at: string;
 }
 
@@ -47,14 +59,21 @@ export default function BroadcastPage() {
   const [sent, setSent] = useState<SentItem[]>([]);
 
   const send = useMutation({
-    mutationFn: () => adminService.broadcast({ title: title.trim(), body: body.trim(), audience, actor }),
-    onSuccess: () => {
-      setSent((s) => [{ id: Date.now(), title: title.trim(), audience, at: new Date().toISOString() }, ...s]);
+    mutationFn: () => adminService.sendBroadcast({ title: title.trim(), message: body.trim(), audience, actor }),
+    onSuccess: (result) => {
+      setSent((s) => [
+        { id: Date.now(), title: title.trim(), audience, recipientCount: result.recipientCount, at: new Date().toISOString() },
+        ...s,
+      ]);
       setConfirmOpen(false);
       setTitle("");
       setBody("");
       setAudience("ALL");
-      toast({ title: "Broadcast sent", description: "Recipients see it in their announcements feed.", variant: "success" });
+      toast({
+        title: "Broadcast sent",
+        description: `Delivered to ${result.recipientCount} account${result.recipientCount === 1 ? "" : "s"}.`,
+        variant: "success",
+      });
     },
     onError: () => toast({ title: "Broadcast failed", description: "Nothing was sent — try again.", variant: "error" }),
   });
@@ -71,7 +90,7 @@ export default function BroadcastPage() {
       <div className="grid lg:grid-cols-2 gap-4 items-start">
         {/* Compose */}
         <Card>
-          <CardHeader title="Compose" description="The message is published under the REDEP Platform identity." />
+          <CardHeader title="Compose" description="The message is published under the E-SHURI Platform identity." />
           <div className="space-y-4">
             <Input
               label="Title"
@@ -116,7 +135,7 @@ export default function BroadcastPage() {
                   <div className="flex items-center gap-2 bg-gold-soft px-4 py-2.5 border-b border-line">
                     <Megaphone className="size-4 text-gold-deep shrink-0" aria-hidden />
                     <span className="text-[11.5px] font-semibold uppercase tracking-wide text-gold-deep">
-                      REDEP Platform · Circular
+                      E-SHURI Platform · Circular
                     </span>
                   </div>
                   <div className="px-4 py-3.5">
@@ -146,7 +165,9 @@ export default function BroadcastPage() {
                     <Megaphone className="size-4 text-gold-deep shrink-0" aria-hidden />
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] font-medium text-ink truncate">{s.title}</p>
-                      <p className="text-[12px] text-muted tnum">{formatDateTime(s.at)}</p>
+                      <p className="text-[12px] text-muted tnum">
+                        {formatDateTime(s.at)} · {s.recipientCount} recipient{s.recipientCount === 1 ? "" : "s"}
+                      </p>
                     </div>
                     <Badge variant="neutral">{AUDIENCE_LABEL[s.audience]}</Badge>
                   </div>

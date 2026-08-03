@@ -53,7 +53,8 @@ export default function AuditLogPage() {
             render: (e) => (
               <span className="flex items-center gap-2">
                 <span className="font-medium text-ink">{e.actorName}</span>
-                <Badge variant="neutral">{ROLE_LABELS[e.actorRole]}</Badge>
+                {/* Real audit rows don't carry a role snapshot — only mock rows do. */}
+                {e.actorRole && <Badge variant="neutral">{ROLE_LABELS[e.actorRole]}</Badge>}
               </span>
             ),
           },

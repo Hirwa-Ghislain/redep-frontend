@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Switch } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { UnderDevelopment } from "@/components/ui/UnderDevelopment";
+import { USE_MOCKS } from "@/lib/api/client";
 import { academicService } from "@/services/academicService";
 import { adminService } from "@/services/adminService";
 import { toast } from "@/stores/uiStore";
@@ -22,6 +24,24 @@ const CHANNEL_ROWS: { key: ChannelKey; label: string; help: string }[] = [
 ];
 
 export default function PlatformSettingsPage() {
+  if (!USE_MOCKS) {
+    return (
+      <PageTransition>
+        <PageHeader
+          title="Platform settings"
+          description="Global calendar, payment rails, feature rollout and compliance controls."
+        />
+        <UnderDevelopment
+          title="No platform-wide settings yet"
+          description="This backend has no central settings entity to manage here: payment channels are configured per school (see each school's Fees page), districts come from the read-only NESA-backed location registry, and there's no academic-year/term model at all — the Prisma schema has no Term or AcademicYear table. Once a real cross-platform settings concept exists, it will live here."
+        />
+      </PageTransition>
+    );
+  }
+  return <MockPlatformSettingsPage />;
+}
+
+function MockPlatformSettingsPage() {
   const [channels, setChannels] = useState<Record<ChannelKey, boolean>>({ momo: true, airtel: true, bank: true });
   const [surveysOn, setSurveysOn] = useState(true);
   const [exporting, setExporting] = useState(false);
@@ -51,7 +71,7 @@ export default function PlatformSettingsPage() {
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = `redep-schools-report-${new Date().toISOString().slice(0, 10)}.csv`;
+      anchor.download = `eshuri-schools-report-${new Date().toISOString().slice(0, 10)}.csv`;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
@@ -187,7 +207,7 @@ export default function PlatformSettingsPage() {
             <CardHeader
               className="mb-3"
               title="Data & compliance"
-              description="How long REDEP keeps records, and what leaves the platform."
+              description="How long E-SHURI keeps records, and what leaves the platform."
             />
             <ul className="space-y-1.5 text-[12.5px] text-muted">
               <li>• Audit log entries are immutable and retained for <span className="font-medium text-ink">7 years</span>.</li>

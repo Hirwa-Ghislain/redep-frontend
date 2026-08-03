@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
 /**
- * REDEP mark — a dot-grid tile (echo of the assembling-dots brand identity).
+ * E-SHURI mark — a dot-grid tile (echo of the assembling-dots brand identity).
  * The gold dot marks the "spark" — one school lighting up on the map.
  */
 export function LogoMark({ className, size = 34 }: { className?: string; size?: number }) {
@@ -26,7 +26,7 @@ export function Logo({ className, dark }: { className?: string; dark?: boolean }
       <LogoMark />
       <span className="flex flex-col leading-none">
         <span className={cn("font-display font-bold text-[17px] tracking-tight", dark ? "text-paper" : "text-ink")}>
-          REDEP
+          E-SHURI
         </span>
         <span className={cn("text-[9.5px] font-medium tracking-[0.14em] uppercase mt-0.5", dark ? "text-paper/50" : "text-muted")}>
           Education Ecosystem

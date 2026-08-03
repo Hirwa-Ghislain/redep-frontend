@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, CheckCircle2, FileCheck2, MapPin, Send, Star } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, FileCheck2, MapPin, Send, Star, Upload, X } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PageTransition } from "@/components/motion";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { FileDrop } from "@/components/ui/FileDrop";
 import { Input, Select } from "@/components/ui/Input";
 import { Stepper } from "@/components/ui/Stepper";
 import { Badge } from "@/components/ui/Badge";
@@ -14,12 +13,13 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { schoolService } from "@/services/schoolService";
 import { admissionService } from "@/services/admissionService";
+import { USE_MOCKS } from "@/lib/api/client";
 import { toast } from "@/stores/uiStore";
-import { LEVEL_LABEL, SCHOOL_TYPE_LABEL } from "@/lib/status";
+import { SCHOOL_TYPE_LABEL } from "@/lib/status";
 import { formatNumber, fullName } from "@/lib/format";
-import type { Gender, SchoolLevel } from "@/types";
+import type { PublicSchoolClass, SchoolClass } from "@/types";
 
-const STEPS = ["Child details", "Documents", "Review & submit"];
+const STEPS = ["Child & class", "Annual report", "Review & submit"];
 
 export default function ApplyPage() {
   const { schoolId = "" } = useParams();
@@ -28,41 +28,47 @@ export default function ApplyPage() {
   const [step, setStep] = useState(0);
 
   const { data: school } = useQuery({ queryKey: ["school", schoolId], queryFn: () => schoolService.get(schoolId) });
+  const { data: mockClasses = [] } = useQuery({
+    queryKey: ["school-classes", schoolId],
+    queryFn: () => schoolService.classes(schoolId),
+    enabled: USE_MOCKS,
+  });
+  const classOptions: Array<SchoolClass | PublicSchoolClass> = USE_MOCKS ? mockClasses : (school?.classes ?? []);
+  const openClasses = classOptions.filter((c) => !("isFull" in c) || !c.isFull);
 
   const [child, setChild] = useState({
-    firstName: "", lastName: user?.lastName ?? "", gender: "F" as Gender,
-    dateOfBirth: "", levelApplied: "" as SchoolLevel | "", previousSchool: "",
+    firstName: "", lastName: user?.lastName ?? "", dateOfBirth: "", classId: "", previousSchool: "",
   });
-  const [birthCert, setBirthCert] = useState<string[]>([]);
-  const [records, setRecords] = useState<string[]>([]);
+  const [annualReport, setAnnualReport] = useState<File | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const selectedClass = classOptions.find((c) => c.id === child.classId);
 
   const submit = useMutation({
     mutationFn: () =>
       admissionService.submit({
         schoolId,
+        classId: child.classId,
         parentId: user!.id,
         parentName: fullName(user!),
-        childFirstName: child.firstName.trim(),
-        childLastName: child.lastName.trim(),
-        gender: child.gender,
+        firstName: child.firstName.trim(),
+        lastName: child.lastName.trim(),
         dateOfBirth: child.dateOfBirth,
-        levelApplied: child.levelApplied as SchoolLevel,
-        previousSchool: child.previousSchool || undefined,
-        documents: [
-          ...birthCert.map((fileName) => ({ type: "BIRTH_CERTIFICATE" as const, fileName })),
-          ...records.map((fileName) => ({ type: "ACADEMIC_RECORDS" as const, fileName })),
-        ],
+        previousSchool: child.previousSchool.trim(),
+        annualReport: annualReport!,
       }),
-    onSuccess: () => {
+    onSuccess: (result) => {
       toast({
         title: "Application submitted",
-        description: `${school?.name} will review it and notify you here.`,
+        description: result.message,
         variant: "success",
       });
       navigate("/parent/applications");
     },
-    onError: () => toast({ title: "Submission failed", description: "Please try again.", variant: "error" }),
+    onError: (e) => {
+      const message = (e as { message?: string })?.message ?? "Please check the details and try again.";
+      toast({ title: "Submission failed", description: message, variant: "error" });
+    },
   });
 
   const validateStep0 = () => {
@@ -70,14 +76,15 @@ export default function ApplyPage() {
     if (!child.firstName.trim()) next.firstName = "Required";
     if (!child.lastName.trim()) next.lastName = "Required";
     if (!child.dateOfBirth) next.dateOfBirth = "Required";
-    if (!child.levelApplied) next.levelApplied = "Select a level";
+    if (!child.classId) next.classId = "Select a class";
+    if (child.previousSchool.trim().length < 2) next.previousSchool = "Required";
     setErrors(next);
     return Object.keys(next).length === 0;
   };
 
   const validateStep1 = () => {
     const next: Record<string, string> = {};
-    if (birthCert.length === 0) next.birthCert = "A birth certificate is required";
+    if (!annualReport) next.annualReport = "The child's most recent annual report/transcript is required";
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -94,7 +101,7 @@ export default function ApplyPage() {
         backTo={`/parent/discover/${schoolId}`}
         backLabel={school?.name ?? "School profile"}
         title={`Apply to ${school?.name ?? "…"}`}
-        description="Your application goes straight to the school's admissions office."
+        description="Your child's report is validated automatically — no manual review queue."
       />
 
       <div className="grid lg:grid-cols-[1fr_310px] gap-4 items-start">
@@ -108,40 +115,60 @@ export default function ApplyPage() {
                 onChange={(e) => setChild((c) => ({ ...c, firstName: e.target.value }))} required />
               <Input label="Child's last name" value={child.lastName} error={errors.lastName}
                 onChange={(e) => setChild((c) => ({ ...c, lastName: e.target.value }))} required />
-              <Select label="Gender" value={child.gender} onChange={(e) => setChild((c) => ({ ...c, gender: e.target.value as Gender }))}>
-                <option value="F">Female</option>
-                <option value="M">Male</option>
-              </Select>
               <Input label="Date of birth" type="date" value={child.dateOfBirth} error={errors.dateOfBirth}
                 onChange={(e) => setChild((c) => ({ ...c, dateOfBirth: e.target.value }))} required />
-              <Select label="Level applying for" value={child.levelApplied} error={errors.levelApplied}
-                onChange={(e) => setChild((c) => ({ ...c, levelApplied: e.target.value as SchoolLevel }))} required>
-                <option value="" disabled>Select…</option>
-                {(school?.levels ?? []).map((l) => (
-                  <option key={l} value={l}>{LEVEL_LABEL[l]}</option>
+              <Select label="Class" value={child.classId} error={errors.classId}
+                onChange={(e) => setChild((c) => ({ ...c, classId: e.target.value }))} required>
+                <option value="" disabled>Select a class with open seats…</option>
+                {openClasses.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </Select>
-              <Input label="Previous school (optional)" value={child.previousSchool}
-                onChange={(e) => setChild((c) => ({ ...c, previousSchool: e.target.value }))} />
+              <Input label="Previous school" value={child.previousSchool} error={errors.previousSchool}
+                onChange={(e) => setChild((c) => ({ ...c, previousSchool: e.target.value }))} required
+                className="sm:col-span-2" />
             </div>
+            {openClasses.length === 0 && (
+              <p className="text-[12.5px] text-clay-deep">This school has no open classes right now.</p>
+            )}
           </div>
         )}
 
         {step === 1 && (
           <div className="space-y-3.5">
-            <FileDrop
-              label="Birth certificate"
-              hint={errors.birthCert ?? "Required — PDF or photo."}
-              files={birthCert}
-              onChange={setBirthCert}
-              multiple={false}
-            />
-            <FileDrop
-              label="Previous academic records"
-              hint="Optional for Nursery/P1 — recommended for transfers."
-              files={records}
-              onChange={setRecords}
-            />
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[13px] font-medium text-ink">Annual report / transcript</span>
+              {annualReport ? (
+                <div className="flex items-center gap-2 rounded-(--radius-ctl) border border-line bg-surface px-3 py-2 text-[13px]">
+                  <FileCheck2 className="size-4 text-primary-deep shrink-0" />
+                  <span className="truncate flex-1 text-ink">{annualReport.name}</span>
+                  <button type="button" onClick={() => setAnnualReport(null)} aria-label="Remove file" className="p-0.5 rounded text-faint hover:text-clay transition-colors">
+                    <X className="size-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center gap-1.5 rounded-(--radius-card) border-2 border-dashed border-line-strong bg-paper/60 hover:border-faint px-4 py-6 cursor-pointer transition-colors">
+                  <Upload className="size-5 text-muted" aria-hidden />
+                  <span className="text-[13.5px] text-ink font-medium">Click to upload the report</span>
+                  <span className="text-[12px] text-faint">PDF or photo</span>
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    className="sr-only"
+                    onChange={(e) => setAnnualReport(e.target.files?.[0] ?? null)}
+                  />
+                </label>
+              )}
+              {errors.annualReport && <p className="text-[12.5px] text-clay-deep">{errors.annualReport}</p>}
+            </div>
+            <div className="flex items-start gap-2.5 rounded-xl bg-sky-soft px-4 py-3 text-[13px] text-sky-deep">
+              <CheckCircle2 className="size-4.5 shrink-0 mt-0.5" />
+              <p>
+                The report is scanned automatically: the child's name, average grade and conduct grade
+                are extracted and checked against this class's admission criteria — no waiting for a
+                human reviewer.
+              </p>
+            </div>
           </div>
         )}
 
@@ -151,21 +178,21 @@ export default function ApplyPage() {
               <dl className="grid sm:grid-cols-2 gap-x-4 gap-y-3 text-[13.5px]">
                 <div><dt className="text-muted">Child</dt><dd className="font-semibold text-ink">{child.firstName} {child.lastName}</dd></div>
                 <div><dt className="text-muted">Date of birth</dt><dd className="font-medium text-ink tnum">{child.dateOfBirth}</dd></div>
-                <div><dt className="text-muted">Applying for</dt><dd className="font-medium text-ink">{child.levelApplied ? LEVEL_LABEL[child.levelApplied] : "—"}</dd></div>
+                <div><dt className="text-muted">Class</dt><dd className="font-medium text-ink">{selectedClass?.name ?? "—"}</dd></div>
                 <div><dt className="text-muted">School</dt><dd className="font-medium text-ink">{school?.name}</dd></div>
-                <div className="sm:col-span-2">
-                  <dt className="text-muted mb-1">Documents</dt>
-                  <dd className="flex flex-wrap gap-1.5">
-                    {[...birthCert, ...records].map((f) => <Badge key={f} variant="info">{f}</Badge>)}
-                  </dd>
+                <div><dt className="text-muted">Previous school</dt><dd className="font-medium text-ink">{child.previousSchool}</dd></div>
+                <div>
+                  <dt className="text-muted mb-1">Annual report</dt>
+                  <dd>{annualReport && <Badge variant="info">{annualReport.name}</Badge>}</dd>
                 </div>
               </dl>
             </div>
             <div className="flex items-start gap-2.5 rounded-xl bg-sky-soft px-4 py-3 text-[13px] text-sky-deep">
               <CheckCircle2 className="size-4.5 shrink-0 mt-0.5" />
               <p>
-                The school will review your application and may approve it, request more information,
-                or offer a waitlist place. You'll be notified at every step.
+                Admission here is fully automatic: report validation, then payment of the application
+                and tuition fees, then the seat is confirmed. There is no manual "under review by a
+                person" step — pay from the Payments page as soon as this submits.
               </p>
             </div>
           </div>
@@ -198,16 +225,11 @@ export default function ApplyPage() {
                 <MapPin className="size-3.5 shrink-0" aria-hidden /> {school.district} · {school.sector}
               </p>
               <p className="text-muted">{SCHOOL_TYPE_LABEL[school.type]} school</p>
-              <p className="flex items-center gap-1.5 font-semibold text-gold-deep tnum">
-                <Star className="size-3.5 fill-gold text-gold" aria-hidden /> {school.satisfactionScore.toFixed(1)} parent satisfaction
-              </p>
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {school.levels.map((l) => (
-                  <Badge key={l} variant={child.levelApplied === l ? "success" : "neutral"}>
-                    {LEVEL_LABEL[l]}
-                  </Badge>
-                ))}
-              </div>
+              {school.satisfactionScore !== undefined && (
+                <p className="flex items-center gap-1.5 font-semibold text-gold-deep tnum">
+                  <Star className="size-3.5 fill-gold text-gold" aria-hidden /> {school.satisfactionScore.toFixed(1)} parent satisfaction
+                </p>
+              )}
               <div className="flex items-center justify-between border-t border-line mt-2.5 pt-2.5">
                 <span className="text-muted">Seats available (school-wide)</span>
                 <span className="font-semibold text-ink tnum">
@@ -225,11 +247,12 @@ export default function ApplyPage() {
         </Card>
 
         <Card>
-          <CardHeader title="Documents you'll need" />
+          <CardHeader title="How this works" />
           <ul className="space-y-2">
             {[
-              ["Birth certificate", "Required — PDF or photo, attached in step 2"],
-              ["Previous academic records", "Optional for Nursery/P1 — recommended for transfers"],
+              ["Annual report", "OCR-extracted name, average grade and conduct grade — required, single file"],
+              ["Automatic validation", "Checked against the class's minimum entry/conduct grade instantly"],
+              ["Pay to confirm", "Application + tuition fees payable from the Payments page once submitted"],
             ].map(([doc, hint]) => (
               <li key={doc} className="flex items-start gap-2.5">
                 <FileCheck2 className="size-4 text-primary-deep shrink-0 mt-0.5" aria-hidden />

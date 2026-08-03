@@ -20,7 +20,7 @@ export function Logo({ dark }: { dark?: boolean }) {
       <LogoMark />
       <span className="flex flex-col leading-none">
         <span className={`font-display font-bold text-[17px] tracking-tight ${dark ? "text-paper" : "text-ink"}`}>
-          REDEP
+          E-SHURI
         </span>
         <span className={`text-[9.5px] font-medium tracking-[0.14em] uppercase mt-0.5 ${dark ? "text-paper/50" : "text-muted"}`}>
           Education Ecosystem

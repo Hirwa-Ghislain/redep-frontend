@@ -16,13 +16,13 @@ import { Timeline } from "@/components/ui/Timeline";
 import { useAuth } from "@/hooks/useAuth";
 import { recruitmentService } from "@/services/recruitmentService";
 import { schoolService } from "@/services/schoolService";
-import type { ApiError } from "@/lib/api/client";
+import { USE_MOCKS, type ApiError } from "@/lib/api/client";
 import { formatDate, formatDateTime, formatNumber, formatRWF, fullName } from "@/lib/format";
 import { toast } from "@/stores/uiStore";
 import { JOB_STAGE, SCHOOL_TYPE_LABEL } from "@/lib/status";
 import type { JobApplicationStage } from "@/types";
 import { cn } from "@/lib/utils";
-import { daysUntil, EMPLOYMENT_TYPE_LABEL, POSITION_TYPE_LABEL } from "./shared";
+import { daysUntil } from "./shared";
 
 const MIN_COVER_LETTER = 40;
 
@@ -41,6 +41,7 @@ export default function VacancyDetailPage() {
   const [applyOpen, setApplyOpen] = useState(false);
   const [coverLetter, setCoverLetter] = useState("");
   const [cvFiles, setCvFiles] = useState<string[]>([]);
+  const [cvFile, setCvFile] = useState<File | null>(null);
   const [errors, setErrors] = useState<{ coverLetter?: string; cv?: string }>({});
 
   const { data: vacancy, isLoading, isError } = useQuery({
@@ -73,6 +74,7 @@ export default function VacancyDetailPage() {
         applicantName: fullName(user!),
         coverLetter: coverLetter.trim(),
         cvFileName: cvFiles[0]!,
+        cvFile: cvFile ?? undefined,
       }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["job-applications"] });
@@ -94,11 +96,15 @@ export default function VacancyDetailPage() {
   });
 
   const openApply = () => {
-    if (cvFiles.length === 0) {
+    // The CV-builder profile is a purely local convenience (the backend has no profile store), so a
+    // prefilled file name only carries real bytes in mock mode — in live mode the applicant must pick
+    // the actual file so it can be uploaded.
+    if (USE_MOCKS && cvFiles.length === 0) {
       const cvDoc = profile?.documents.find((d) => d.type === "CV");
       if (cvDoc) setCvFiles([cvDoc.fileName]);
     }
     setErrors({});
+    setCvFile(null);
     setApplyOpen(true);
   };
 
@@ -108,6 +114,7 @@ export default function VacancyDetailPage() {
       next.coverLetter = `Write at least ${MIN_COVER_LETTER} characters — tell the school why you fit this role.`;
     }
     if (cvFiles.length === 0) next.cv = "Attach your CV to apply.";
+    else if (!USE_MOCKS && !cvFile) next.cv = "Select your CV file again so it can be uploaded.";
     setErrors(next);
     if (Object.keys(next).length === 0) apply.mutate();
   };
@@ -165,8 +172,6 @@ export default function VacancyDetailPage() {
         <div className="lg:col-span-2 min-w-0 space-y-4">
           <Card>
             <div className="flex flex-wrap gap-1.5 mb-3.5">
-              <Badge variant="info">{POSITION_TYPE_LABEL[vacancy.positionType]}</Badge>
-              <Badge variant="neutral">{EMPLOYMENT_TYPE_LABEL[vacancy.employmentType]}</Badge>
               {vacancy.subject && <Badge variant="success">{vacancy.subject}</Badge>}
               <Badge variant={vacancy.status === "OPEN" ? "success" : "neutral"} dot>
                 {vacancy.status === "OPEN" ? "Open" : "Closed"}
@@ -174,15 +179,19 @@ export default function VacancyDetailPage() {
             </div>
             <p className="text-[13.5px] text-ink leading-relaxed">{vacancy.description}</p>
 
-            <h3 className="font-display font-semibold text-[14px] text-ink mt-5 mb-2.5">Requirements</h3>
-            <ul className="space-y-2">
-              {vacancy.requirements.map((r) => (
-                <li key={r} className="flex items-start gap-2 text-[12.5px] text-ink">
-                  <CheckCircle2 className="size-4 text-primary-deep shrink-0 mt-px" aria-hidden />
-                  {r}
-                </li>
-              ))}
-            </ul>
+            {vacancy.requirements.length > 0 && (
+              <>
+                <h3 className="font-display font-semibold text-[14px] text-ink mt-5 mb-2.5">Requirements</h3>
+                <ul className="space-y-2">
+                  {vacancy.requirements.map((r) => (
+                    <li key={r} className="flex items-start gap-2 text-[12.5px] text-ink">
+                      <CheckCircle2 className="size-4 text-primary-deep shrink-0 mt-px" aria-hidden />
+                      {r}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
           </Card>
 
           {existing && (
@@ -217,9 +226,11 @@ export default function VacancyDetailPage() {
                   <MapPin className="size-3.5 shrink-0" aria-hidden /> {school.district} · {school.sector}
                 </p>
                 <p className="text-muted">{SCHOOL_TYPE_LABEL[school.type]} school</p>
-                <p className="flex items-center gap-1.5 font-semibold text-gold-deep tnum">
-                  <Star className="size-3.5 fill-gold text-gold" aria-hidden /> {school.satisfactionScore.toFixed(1)} parent satisfaction
-                </p>
+                {school.satisfactionScore !== undefined && (
+                  <p className="flex items-center gap-1.5 font-semibold text-gold-deep tnum">
+                    <Star className="size-3.5 fill-gold text-gold" aria-hidden /> {school.satisfactionScore.toFixed(1)} parent satisfaction
+                  </p>
+                )}
               </div>
             ) : (
               <div className="space-y-2">
@@ -233,8 +244,6 @@ export default function VacancyDetailPage() {
           <Card padded={false} className="p-4">
             <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-3">About this role</p>
             <dl className="grid grid-cols-2 gap-y-2 gap-x-3 text-[12.5px]">
-              <dt className="text-muted">Contract</dt>
-              <dd className="font-medium text-ink text-right">{EMPLOYMENT_TYPE_LABEL[vacancy.employmentType]}</dd>
               <dt className="text-muted">Salary</dt>
               <dd className="font-medium text-ink tnum text-right">
                 {vacancy.salaryRange
@@ -284,7 +293,7 @@ export default function VacancyDetailPage() {
             value={coverLetter}
             error={errors.coverLetter}
             hint="A short, specific note works best — reference the role's requirements."
-            placeholder={`Why are you the right ${POSITION_TYPE_LABEL[vacancy.positionType].toLowerCase()} for ${vacancy.schoolName}?`}
+            placeholder={`Why are you the right fit for this role at ${vacancy.schoolName}?`}
             onChange={(e) => setCoverLetter(e.target.value)}
           />
           <div>
@@ -292,9 +301,14 @@ export default function VacancyDetailPage() {
               label="Your CV"
               files={cvFiles}
               onChange={setCvFiles}
+              onFilesChange={(picked) => setCvFile(picked[0] ?? null)}
               multiple={false}
               accept=".pdf,.doc,.docx"
-              hint="One file — we prefilled the CV from your profile if you have one."
+              hint={
+                USE_MOCKS
+                  ? "One file — we prefilled the CV from your profile if you have one."
+                  : "One file — PDF or Word document."
+              }
             />
             {errors.cv && (
               <p className="text-[12.5px] text-clay-deep mt-1.5" role="alert">{errors.cv}</p>

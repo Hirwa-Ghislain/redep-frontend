@@ -147,7 +147,7 @@ export default function TeacherDashboard() {
                         <span className="tnum">{c.students.length}</span> students on the roster
                       </p>
                     </div>
-                    <Badge variant="neutral">{LEVEL_LABEL[c.level]}</Badge>
+                    <Badge variant="neutral">{c.level ? LEVEL_LABEL[c.level] : c.name}</Badge>
                     <div className="flex items-center gap-3">
                       <Link
                         to="/teacher/attendance"

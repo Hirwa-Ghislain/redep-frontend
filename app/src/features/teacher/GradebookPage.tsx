@@ -13,13 +13,14 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StatCard } from "@/components/ui/StatCard";
+import { UnderDevelopment } from "@/components/ui/UnderDevelopment";
 import { BarsChart } from "@/components/charts/BarsChart";
 import { useAuth } from "@/hooks/useAuth";
 import { academicService } from "@/services/academicService";
 import { toast } from "@/stores/uiStore";
 import { formatDate, fullName, percent } from "@/lib/format";
 import { clamp } from "@/lib/utils";
-import type { ApiError } from "@/lib/api/client";
+import { USE_MOCKS, type ApiError } from "@/lib/api/client";
 import type { Grade, Student } from "@/types";
 import { ASSESSMENT_TYPE } from "./AssessmentsPage";
 
@@ -40,14 +41,14 @@ export default function GradebookPage() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ["gradebook", assessmentId],
     queryFn: () => academicService.gradebook(assessmentId),
-    enabled: Boolean(assessmentId),
+    enabled: Boolean(assessmentId) && USE_MOCKS,
     retry: false,
   });
 
   const { data: classes = [] } = useQuery({
     queryKey: ["teacher-classes", user?.id],
     queryFn: () => academicService.teacherClasses(user!.id),
-    enabled: Boolean(user),
+    enabled: Boolean(user) && USE_MOCKS,
   });
 
   // Seed the editable map from existing grades whenever the gradebook loads.
@@ -136,6 +137,18 @@ export default function GradebookPage() {
     onError: (e) =>
       toast({ title: "Could not save grades", description: (e as unknown as ApiError).message, variant: "error" }),
   });
+
+  if (!USE_MOCKS) {
+    return (
+      <PageTransition>
+        <PageHeader backTo="/teacher/assessments" backLabel="Assessments" title="Gradebook" />
+        <UnderDevelopment
+          title="Assessments & grading"
+          description="Gradebook and assessment tracking aren't available in this backend yet."
+        />
+      </PageTransition>
+    );
+  }
 
   if (isError) {
     return (

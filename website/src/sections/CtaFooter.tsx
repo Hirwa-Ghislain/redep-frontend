@@ -81,13 +81,13 @@ export function CtaFooter() {
               <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-paper/40">Contact</p>
               <ul className="mt-4 space-y-2.5 text-[13.5px] text-paper/65">
                 <li>Kigali, Rwanda</li>
-                <li>hello@redep.example.rw</li>
+                <li>hello@eshuri.example.rw</li>
                 <li>+250 7xx xxx xxx</li>
               </ul>
             </div>
           </div>
           <div className="mt-12 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-6">
-            <p className="text-[12.5px] text-paper/40">© 2026 REDEP. Demonstration project — payments and SMS are simulated.</p>
+            <p className="text-[12.5px] text-paper/40">© 2026 E-SHURI. Demonstration project — payments and SMS are simulated.</p>
             <p className="text-[12.5px] text-paper/40">Made with care for Rwandan education 🇷🇼</p>
           </div>
         </div>

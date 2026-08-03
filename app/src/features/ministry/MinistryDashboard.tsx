@@ -53,7 +53,10 @@ export default function MinistryDashboard() {
         }
       : undefined;
 
+  // The real backend's enrollment-trends endpoint only reports enrolled counts over time
+  // (no applications/capacity series) — the chart below only draws series present in the data.
   const trendData = trends.map((t) => ({ ...t }));
+  const hasCapacitySeries = trends.some((t) => t.capacity !== undefined);
   const topDistricts = [...districts]
     .sort((a, b) => b.enrolled - a.enrolled)
     .slice(0, 8)
@@ -98,7 +101,7 @@ export default function MinistryDashboard() {
           ))}
         </div>
       ) : kpis ? (
-        <Stagger className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <Stagger className={`grid grid-cols-2 gap-3 ${kpis.avgSatisfaction !== undefined ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}>
           <StaggerItem>
             <StatCard label="Schools on platform" value={formatNumber(kpis.totalSchools)} icon={Building2} tone="primary" />
           </StaggerItem>
@@ -122,9 +125,13 @@ export default function MinistryDashboard() {
           <StaggerItem>
             <StatCard label="Open vacancies" value={formatNumber(kpis.openVacancies)} icon={Briefcase} tone="clay" />
           </StaggerItem>
-          <StaggerItem>
-            <StatCard label="Avg parent satisfaction" value={`★ ${kpis.avgSatisfaction.toFixed(1)}`} icon={Star} tone="gold" />
-          </StaggerItem>
+          {/* No satisfaction-survey system in the real backend — this card only renders when
+              the field is present (mock mode). */}
+          {kpis.avgSatisfaction !== undefined && (
+            <StaggerItem>
+              <StatCard label="Avg parent satisfaction" value={`★ ${kpis.avgSatisfaction.toFixed(1)}`} icon={Star} tone="gold" />
+            </StaggerItem>
+          )}
         </Stagger>
       ) : null}
 
@@ -132,8 +139,12 @@ export default function MinistryDashboard() {
       <div className="grid lg:grid-cols-5 gap-4 mt-4">
         <Card className="lg:col-span-3">
           <CardHeader
-            title="Enrollment vs capacity — six terms"
-            description="National totals per term; the newest term is a projection."
+            title={hasCapacitySeries ? "Enrollment vs capacity — six terms" : "Enrollment trend"}
+            description={
+              hasCapacitySeries
+                ? "National totals per term; the newest term is a projection."
+                : "National enrollment counts over recent months."
+            }
           />
           {loadingTrends ? (
             <Skeleton className="h-[260px] w-full" />
@@ -143,7 +154,7 @@ export default function MinistryDashboard() {
               xKey="period"
               series={[
                 { key: "enrolled", name: "Enrolled" },
-                { key: "capacity", name: "Capacity" },
+                ...(hasCapacitySeries ? [{ key: "capacity", name: "Capacity" }] : []),
               ]}
               formatter={formatCompact}
               height={260}

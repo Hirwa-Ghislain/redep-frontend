@@ -13,16 +13,20 @@ import { Input } from "@/components/ui/Input";
 import { CardSkeleton, Skeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { academicService } from "@/services/academicService";
+import { authService } from "@/services/authService";
 import { schoolService } from "@/services/schoolService";
+import { useAuthStore } from "@/stores/authStore";
 import { toast } from "@/stores/uiStore";
 import { formatDate } from "@/lib/format";
 import { LEVEL_LABEL } from "@/lib/status";
-import type { ApiError } from "@/lib/api/client";
+import { USE_MOCKS, type ApiError } from "@/lib/api/client";
 
 export default function ProfilePage() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [phone, setPhone] = useState("");
+  const [firstName, setFirstName] = useState(user?.firstName ?? "");
+  const [lastName, setLastName] = useState(user?.lastName ?? "");
 
   const { data: teacher, isLoading } = useQuery({
     queryKey: ["teacher", user?.id],
@@ -46,6 +50,15 @@ export default function ProfilePage() {
     if (teacher) setPhone(teacher.phone);
   }, [teacher]);
 
+  useEffect(() => {
+    if (user) {
+      setFirstName(user.firstName);
+      setLastName(user.lastName);
+    }
+  }, [user]);
+
+  // Mock mode only: phone has no editable backend field (see below), but the demo db
+  // supports it directly so the original UX stays intact for VITE_USE_MOCKS=true.
   const savePhone = useMutation({
     mutationFn: () => academicService.updateTeacher(user!.id, { phone: phone.trim() }),
     onSuccess: () => {
@@ -56,7 +69,25 @@ export default function ProfilePage() {
       toast({ title: "Could not update phone", description: (e as unknown as ApiError).message, variant: "error" }),
   });
 
+  // Live mode: only first/last name are actually editable (`PATCH /auth/me`). Phone has
+  // no update endpoint on the real backend at all, so it stays read-only there.
+  const saveName = useMutation({
+    mutationFn: () => authService.updateProfile({ firstName: firstName.trim(), lastName: lastName.trim() }),
+    onSuccess: (updated) => {
+      const session = useAuthStore.getState().session;
+      if (session) useAuthStore.setState({ session: { ...session, user: updated } });
+      toast({ title: "Profile updated", description: "Your name has been saved.", variant: "success" });
+    },
+    onError: (e) =>
+      toast({ title: "Could not update profile", description: (e as unknown as ApiError).message, variant: "error" }),
+  });
+
   const phoneChanged = Boolean(teacher) && phone.trim() !== teacher!.phone && phone.trim().length > 0;
+  const nameChanged =
+    Boolean(user) &&
+    (firstName.trim() !== user!.firstName || lastName.trim() !== user!.lastName) &&
+    firstName.trim().length > 0 &&
+    lastName.trim().length > 0;
 
   if (isLoading || !teacher) {
     return (
@@ -101,10 +132,10 @@ export default function ProfilePage() {
               <dd className="text-muted">{school?.name ?? "…"}</dd>
             </div>
             <div className="flex items-center gap-2">
-              <dt className="sr-only">Hired</dt>
+              <dt className="sr-only">{USE_MOCKS ? "Hired" : "Joined"}</dt>
               <CalendarCheck className="size-3.5 text-faint" aria-hidden />
               <dd className="text-muted">
-                Hired <span className="tnum">{formatDate(teacher.hiredAt)}</span>
+                {USE_MOCKS ? "Hired" : "Joined"} <span className="tnum">{formatDate(teacher.hiredAt)}</span>
               </dd>
             </div>
           </dl>
@@ -114,31 +145,53 @@ export default function ProfilePage() {
       <div className="grid lg:grid-cols-3 gap-4 items-start">
         <div className="lg:col-span-2 space-y-4">
           {/* Contact */}
-          <Card>
-            <CardHeader
-              title="Contact details"
-              description="Keep your phone number current — the school office uses it to reach you."
-            />
-            <div className="flex flex-wrap items-end gap-3">
-              <Input
-                label="Phone number"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+250 7xx xxx xxx"
-                className="w-full sm:w-64"
+          {USE_MOCKS ? (
+            <Card>
+              <CardHeader
+                title="Contact details"
+                description="Keep your phone number current — the school office uses it to reach you."
               />
-              <Button
-                size="sm"
-                icon={<Save className="size-3.5" />}
-                loading={savePhone.isPending}
-                disabled={!phoneChanged}
-                onClick={() => savePhone.mutate()}
-              >
-                Save
-              </Button>
-            </div>
-          </Card>
+              <div className="flex flex-wrap items-end gap-3">
+                <Input
+                  label="Phone number"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+250 7xx xxx xxx"
+                  className="w-full sm:w-64"
+                />
+                <Button
+                  size="sm"
+                  icon={<Save className="size-3.5" />}
+                  loading={savePhone.isPending}
+                  disabled={!phoneChanged}
+                  onClick={() => savePhone.mutate()}
+                >
+                  Save
+                </Button>
+              </div>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader title="Name & contact" description="Your phone number is managed by your school administrator." />
+              <div className="space-y-3.5">
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <Input label="First name" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+                  <Input label="Last name" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+                </div>
+                <Input label="Phone number" type="tel" value={phone} disabled hint="Contact your school administrator to update this." />
+                <Button
+                  size="sm"
+                  icon={<Save className="size-3.5" />}
+                  loading={saveName.isPending}
+                  disabled={!nameChanged}
+                  onClick={() => saveName.mutate()}
+                >
+                  Save
+                </Button>
+              </div>
+            </Card>
+          )}
 
           {/* Classes taught */}
           <Card padded={false}>
@@ -167,7 +220,7 @@ export default function ProfilePage() {
                         <span className="tnum">{c.students.length}</span> students
                       </p>
                     </div>
-                    <Badge variant="neutral">{LEVEL_LABEL[c.level]}</Badge>
+                    <Badge variant="neutral">{c.level ? LEVEL_LABEL[c.level] : c.name}</Badge>
                   </div>
                 ))}
               </div>

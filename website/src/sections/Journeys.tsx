@@ -19,7 +19,7 @@ const JOURNEYS = [
     icon: Building2,
     label: "As a school",
     steps: [
-      { title: "Get verified", body: "Request onboarding; REDEP administrators verify your documents and activate your school." },
+      { title: "Get verified", body: "Request onboarding; E-SHURI administrators verify your documents and activate your school." },
       { title: "Build your profile", body: "Publish classes, seats, fees and achievements — your public face to every parent in Rwanda." },
       { title: "Run the office", body: "Review admissions, manage students, collect fees with automatic receipts, and give staff exactly the permissions their job needs." },
       { title: "Grow your team", body: "Post vacancies to a national talent pool and run candidates through a real pipeline." },

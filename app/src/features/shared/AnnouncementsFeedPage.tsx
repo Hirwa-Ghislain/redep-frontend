@@ -8,12 +8,14 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Select } from "@/components/ui/Input";
 import { CardSkeleton } from "@/components/ui/Skeleton";
+import { UnderDevelopment } from "@/components/ui/UnderDevelopment";
 import { useAuth } from "@/hooks/useAuth";
 import { commsService } from "@/services/commsService";
 import { studentService } from "@/services/studentService";
 import { schoolService } from "@/services/schoolService";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { USE_MOCKS } from "@/lib/api/client";
 import type { AnnouncementCategory } from "@/types";
 
 const CATEGORY_META: Record<AnnouncementCategory, { label: string; variant: BadgeVariant }> = {
@@ -27,6 +29,28 @@ const CATEGORY_META: Record<AnnouncementCategory, { label: string; variant: Badg
 
 /** Read-only announcements feed for parents and teachers, with client-side filters. */
 export default function AnnouncementsFeedPage() {
+  const { role } = useAuth();
+
+  // The real backend has no read endpoint for school-staff/teacher-facing announcements —
+  // only `GET /parents/communications` exists (school.routes.ts / education-authority.routes.ts
+  // have no equivalent for TEACHER). Rather than call a nonexistent/wrong-role endpoint, be
+  // honest about the gap for that role in live mode.
+  if (!USE_MOCKS && role === "TEACHER") {
+    return (
+      <PageTransition>
+        <PageHeader title="Announcements" description="Notices from your schools and national circulars, newest first." />
+        <UnderDevelopment
+          title="School announcements"
+          description="A teacher-facing announcements feed isn't available yet."
+        />
+      </PageTransition>
+    );
+  }
+
+  return <AnnouncementsFeed />;
+}
+
+function AnnouncementsFeed() {
   const { user, role } = useAuth();
   const [category, setCategory] = useState<AnnouncementCategory | "ALL">("ALL");
   const [schoolFilter, setSchoolFilter] = useState<string>("ALL");
