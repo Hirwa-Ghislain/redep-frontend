@@ -18,11 +18,11 @@ jobs:
             image: e-shuri-app
             build_args: |
               VITE_USE_MOCKS=false
-              VITE_API_URL=https://api.eshuri.185-137-122-54.sslip.io/api/v1
+              VITE_API_URL=http://api.eshuri.185-137-122-54.sslip.io:8880/api/v1
           - dir: website
             image: e-shuri-website
             build_args: |
-              VITE_APP_URL=https://app.eshuri.185-137-122-54.sslip.io
+              VITE_APP_URL=http://app.eshuri.185-137-122-54.sslip.io:8880
     steps:
       - uses: actions/checkout@v4
 
