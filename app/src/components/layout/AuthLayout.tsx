@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { BadgeCheck, ShieldCheck, Armchair } from "lucide-react";
 import { Logo } from "./Logo";
+import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
 
 /**
  * Auth layout v2 — centered card on a textured canvas (replaces the old
@@ -23,10 +24,13 @@ export function AuthLayout({ children, aside }: { children: ReactNode; aside?: R
       />
 
       {/* header */}
-      <header className="relative flex justify-center pt-10 pb-8">
+      <header className="relative flex items-center justify-center pt-10 pb-8">
         <Link to="/login" aria-label="E-SHURI home">
           <Logo />
         </Link>
+        <div className="absolute right-5 top-8">
+          <LanguageSwitcher />
+        </div>
       </header>
 
       {/* content */}
@@ -70,9 +74,14 @@ export function AuthLayout({ children, aside }: { children: ReactNode; aside?: R
       </main>
 
       {/* footer */}
-      <footer className="relative pb-8 text-center">
+      <footer className="relative pb-8 text-center space-y-1.5">
         <p className="text-[12px] text-faint">
           © 2026 E-SHURI — Rwanda Education Digital Ecosystem Platform · Demo environment, payments simulated
+        </p>
+        <p className="text-[12px]">
+          <Link to="/report-incident" className="text-muted hover:text-clay-deep hover:underline">
+            Report a safety concern
+          </Link>
         </p>
       </footer>
     </div>

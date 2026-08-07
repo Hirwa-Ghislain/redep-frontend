@@ -10,9 +10,11 @@ export interface RegisterInput {
   email: string;
   phone: string;
   password: string;
+  confirmPassword: string;
   nationalId: string;
   dateOfBirth: string; // yyyy-MM-dd
   role: "PARENT" | "APPLICANT";
+  preferredLanguage?: "EN" | "RW" | "FR";
 }
 
 /** Returned by `register()` — the backend requires OTP verification before a session exists. */
@@ -99,9 +101,11 @@ export const authService = {
       email: input.email.trim().toLowerCase(),
       phone: input.phone,
       password: input.password,
+      confirmPassword: input.confirmPassword,
       nationalId: input.nationalId,
       dateOfBirth: input.dateOfBirth,
       role: input.role,
+      preferredLanguage: input.preferredLanguage ?? "EN",
     });
     return { email: input.email.trim().toLowerCase(), phone: input.phone };
   },
@@ -124,7 +128,7 @@ export const authService = {
   },
 
   // POST /api/v1/auth/reset-password
-  async resetPassword(input: { email: string; otp: string; password: string }): Promise<void> {
+  async resetPassword(input: { email: string; otp: string; password: string; confirmPassword: string }): Promise<void> {
     if (USE_MOCKS) {
       await simulate(null, 500);
       return;
@@ -143,7 +147,7 @@ export const authService = {
   },
 
   // PATCH /api/v1/auth/me
-  async updateProfile(input: { firstName?: string; lastName?: string }): Promise<User> {
+  async updateProfile(input: { firstName?: string; lastName?: string; preferredLanguage?: "EN" | "RW" | "FR" }): Promise<User> {
     if (USE_MOCKS) {
       await simulate(null, 400);
       throw { code: "NOT_SUPPORTED", message: "Not available in demo mode.", status: 400 };

@@ -10,12 +10,15 @@ import type { ApiError } from "@/lib/api/client";
 import { USE_MOCKS } from "@/lib/api/client";
 import type { PendingVerification } from "@/services/authService";
 import { cn } from "@/lib/utils";
+import { RWANDA_PHONE, isAdult, passwordIssue } from "@/lib/validation";
+import { useI18nStore } from "@/stores/i18nStore";
 
 type Step = "DETAILS" | "VERIFY";
 
 export default function RegisterPage() {
   const register = useAuthStore((s) => s.register);
   const verifyAccount = useAuthStore((s) => s.verifyAccount);
+  const preferredLanguage = useI18nStore((s) => s.language);
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>("DETAILS");
   const [role, setRole] = useState<"PARENT" | "APPLICANT">("PARENT");
@@ -25,6 +28,7 @@ export default function RegisterPage() {
     email: "",
     phone: "",
     password: "",
+    confirmPassword: "",
     nationalId: "",
     dateOfBirth: "",
   });
@@ -42,18 +46,21 @@ export default function RegisterPage() {
     if (!form.firstName.trim()) next.firstName = "Required";
     if (!form.lastName.trim()) next.lastName = "Required";
     if (!/^\S+@\S+\.\S+$/.test(form.email)) next.email = "Enter a valid email";
-    if (!/^\+?\d{9,15}$/.test(form.phone.replace(/\s/g, ""))) next.phone = "Enter a valid phone number";
-    if (form.password.length < 8) next.password = "At least 8 characters";
+    if (!RWANDA_PHONE.test(form.phone.replace(/\s/g, ""))) next.phone = "Enter a valid Rwanda phone number";
+    const pwIssue = passwordIssue(form.password);
+    if (pwIssue) next.password = pwIssue;
+    if (form.confirmPassword !== form.password) next.confirmPassword = "Passwords do not match";
     if (!USE_MOCKS) {
       if (!/^\d{16}$/.test(form.nationalId)) next.nationalId = "Enter your 16-digit National ID";
       if (!form.dateOfBirth) next.dateOfBirth = "Required";
+      else if (!isAdult(form.dateOfBirth)) next.dateOfBirth = "Must be at least 18 years old";
     }
     setErrors(next);
     if (Object.keys(next).length) return;
 
     setLoading(true);
     try {
-      const result = await register({ ...form, role });
+      const result = await register({ ...form, role, preferredLanguage });
       if ("email" in result && !("id" in result)) {
         // Backend requires OTP verification before the account is usable.
         setPending(result);
@@ -202,7 +209,16 @@ export default function RegisterPage() {
           value={form.password}
           onChange={set("password")}
           error={errors.password}
-          hint="At least 8 characters."
+          hint="At least 10 characters, with upper & lower case, a number, and a special character."
+          required
+        />
+        <Input
+          label="Confirm password"
+          type="password"
+          autoComplete="new-password"
+          value={form.confirmPassword}
+          onChange={set("confirmPassword")}
+          error={errors.confirmPassword}
           required
         />
         <Button type="submit" size="lg" loading={loading} iconRight={<ArrowRight className="size-4" />} className="w-full">

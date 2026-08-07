@@ -21,6 +21,7 @@ import {
   School,
   ScrollText,
   Settings,
+  ShieldAlert,
   ShieldCheck,
   TrendingUp,
   UserRound,
@@ -107,6 +108,12 @@ export const SCHOOL_NAV: NavSection[] = [
     ],
   },
   {
+    title: "Safeguarding",
+    items: [
+      { label: "Incidents", to: "/school/incidents", icon: ShieldAlert, permission: P.INCIDENTS_VIEW },
+    ],
+  },
+  {
     items: [
       { label: "School profile", to: "/school/profile", icon: Building2, permission: P.SCHOOL_PROFILE_EDIT },
       { label: "Settings", to: "/school/settings", icon: Settings, permission: P.SCHOOL_SETTINGS_MANAGE },
@@ -162,6 +169,12 @@ export const MINISTRY_NAV: NavSection[] = [
     items: [
       { label: "Reports", to: "/ministry/reports", icon: FileBarChart, permission: P.MINISTRY_REPORTS_GENERATE },
       { label: "Circulars", to: "/ministry/circulars", icon: Megaphone, permission: P.MINISTRY_ANNOUNCE },
+    ],
+  },
+  {
+    title: "Safeguarding",
+    items: [
+      { label: "Incidents", to: "/ministry/incidents", icon: ShieldAlert, permission: P.MINISTRY_INCIDENTS_MANAGE },
     ],
   },
 ];

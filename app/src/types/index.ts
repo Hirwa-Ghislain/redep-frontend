@@ -692,6 +692,91 @@ export interface AuditLogEntry {
 
 /* --------------------------------- surveys --------------------------------- */
 
+/* -------------------------------- incidents --------------------------------- */
+
+export type IncidentReporterType = "STUDENT" | "PARENT" | "TEACHER" | "STAFF" | "WITNESS" | "ANONYMOUS" | "OTHER";
+
+export type IncidentCategory =
+  | "PHYSICAL_VIOLENCE"
+  | "SEXUAL_ABUSE"
+  | "HARASSMENT"
+  | "BULLYING"
+  | "DISCRIMINATION"
+  | "THEFT"
+  | "CORRUPTION"
+  | "DRUGS"
+  | "WEAPON"
+  | "EXAM_MALPRACTICE"
+  | "NEGLECT"
+  | "UNSAFE_CONDITIONS"
+  | "CYBERBULLYING"
+  | "OTHER";
+
+export type IncidentSubjectType = "STUDENT" | "TEACHER" | "SCHOOL_ADMIN" | "STAFF" | "PARENT" | "VISITOR" | "UNKNOWN" | "OTHER";
+
+export type IncidentSeverity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+
+/** Renamed by backend migration 20260804170000 — TRIAGED/UNDER_INVESTIGATION → REVIEWING,
+ *  ACTION_REQUIRED → SCHOOL_RESPONSE_REQUESTED, REFERRED → REFERRED_TO_RELEVANT_AUTHORITY. */
+export type IncidentStatus =
+  | "SUBMITTED"
+  | "REVIEWING"
+  | "SCHOOL_RESPONSE_REQUESTED"
+  | "REFERRED_TO_RELEVANT_AUTHORITY"
+  | "RESOLVED"
+  | "CLOSED";
+
+export interface IncidentEvidence {
+  id: ID;
+  filename: string;
+}
+
+export interface Incident {
+  id: ID;
+  referenceCode: string;
+  schoolId: ID;
+  schoolName?: string;
+  reporterType: IncidentReporterType;
+  reporterName?: string;
+  reporterEmail?: string;
+  reporterPhone?: string;
+  identityProtected: boolean;
+  category: IncidentCategory;
+  subjectType: IncidentSubjectType;
+  subjectName?: string;
+  title: string;
+  description: string;
+  location?: string;
+  occurredAt?: string;
+  immediateDanger: boolean;
+  severity: IncidentSeverity;
+  status: IncidentStatus;
+  authorityNotifiedAt?: string;
+  schoolAcknowledgedAt?: string;
+  resolutionSummary?: string;
+  evidence: IncidentEvidence[];
+  createdAt: string;
+}
+
+export interface IncidentReportInput {
+  schoolId: string;
+  reporterType: IncidentReporterType;
+  reporterName?: string;
+  reporterEmail?: string;
+  reporterPhone?: string;
+  identityProtected?: boolean;
+  category: IncidentCategory;
+  subjectType: IncidentSubjectType;
+  subjectName?: string;
+  title: string;
+  description: string;
+  location?: string;
+  occurredAt?: string;
+  immediateDanger?: boolean;
+}
+
+/* --------------------------------- surveys --------------------------------- */
+
 export interface SatisfactionSurvey {
   id: ID;
   schoolId: ID;

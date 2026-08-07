@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/Input";
 import { authService } from "@/services/authService";
 import { toast } from "@/stores/uiStore";
 import type { ApiError } from "@/lib/api/client";
+import { passwordIssue } from "@/lib/validation";
 
 type Step = "REQUEST" | "SENT" | "RESET";
 
@@ -16,6 +17,7 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,13 +36,18 @@ export default function ForgotPasswordPage() {
       setError("Enter the 6-digit code sent to your email.");
       return;
     }
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+    const pwIssue = passwordIssue(password);
+    if (pwIssue) {
+      setError(pwIssue);
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
       return;
     }
     setLoading(true);
     try {
-      await authService.resetPassword({ email: email.trim().toLowerCase(), otp, password });
+      await authService.resetPassword({ email: email.trim().toLowerCase(), otp, password, confirmPassword });
       toast({ title: "Password reset", description: "Sign in with your new password.", variant: "success" });
       navigate("/login", { replace: true });
     } catch (err) {
@@ -75,10 +82,19 @@ export default function ForgotPasswordPage() {
             type="password"
             autoComplete="new-password"
             icon={<KeyRound />}
-            hint="At least 8 characters."
+            hint="At least 10 characters, with upper & lower case, a number, and a special character."
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             error={error ?? undefined}
+            required
+          />
+          <Input
+            label="Confirm new password"
+            type="password"
+            autoComplete="new-password"
+            icon={<KeyRound />}
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
             required
           />
           <Button type="submit" size="lg" loading={loading} className="w-full">

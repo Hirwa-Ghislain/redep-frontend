@@ -19,6 +19,7 @@ import type {
   DocumentRef,
   FeeStructure,
   Grade,
+  Incident,
   JobApplication,
   Message,
   MessageThread,
@@ -994,6 +995,72 @@ const districtStats: DistrictStat[] = [
   { district: "Gicumbi", schools: 89, enrolled: 60_400, capacity: 69_000, teacherGap: 155, transfersOut: 82, transfersIn: 71, satisfaction: 3.9 },
 ];
 
+/* ---------------------------------- incidents ----------------------------------- */
+
+const incidents: Incident[] = [
+  {
+    id: "inc_1",
+    referenceCode: "INC-8F3K2N1Q",
+    schoolId: DEMO.schoolId,
+    reporterType: "ANONYMOUS",
+    identityProtected: true,
+    category: "BULLYING",
+    subjectType: "STUDENT",
+    subjectName: "A P5 student",
+    title: "Repeated bullying near the sports field",
+    description:
+      "A group of older students has been targeting a younger student during break time for the past two weeks, taking their lunch money and threatening them if they tell a teacher.",
+    location: "Sports field, east side",
+    immediateDanger: false,
+    severity: "MEDIUM",
+    status: "SCHOOL_RESPONSE_REQUESTED",
+    authorityNotifiedAt: daysAgo(6),
+    evidence: [],
+    createdAt: daysAgo(7),
+  },
+  {
+    id: "inc_2",
+    referenceCode: "INC-4R7T9B2X",
+    schoolId: DEMO.schoolId,
+    reporterType: "PARENT",
+    reporterName: "Concerned parent",
+    reporterEmail: "parent.watch@example.rw",
+    identityProtected: false,
+    category: "UNSAFE_CONDITIONS",
+    subjectType: "UNKNOWN",
+    title: "Exposed electrical wiring in the P3 classroom block",
+    description:
+      "There is exposed wiring hanging near the ceiling in the P3 classroom block that students can reach when standing on desks. It has been like this since the term started.",
+    location: "P3 classroom block",
+    immediateDanger: true,
+    severity: "HIGH",
+    status: "REVIEWING",
+    evidence: [{ id: "ev_1", filename: "wiring-photo.jpg" }],
+    createdAt: daysAgo(3),
+  },
+  {
+    id: "inc_3",
+    referenceCode: "INC-2Q5W8L4M",
+    schoolId: DEMO.kivuSchoolId,
+    reporterType: "TEACHER",
+    reporterName: "Homeroom teacher",
+    identityProtected: false,
+    category: "EXAM_MALPRACTICE",
+    subjectType: "STUDENT",
+    title: "Suspected exam paper leak before the term 2 mathematics exam",
+    description:
+      "Several students appeared to already know the exact exam questions the morning before the scheduled mathematics exam, matching the sealed paper exactly.",
+    immediateDanger: false,
+    severity: "MEDIUM",
+    status: "RESOLVED",
+    authorityNotifiedAt: daysAgo(28),
+    schoolAcknowledgedAt: daysAgo(27),
+    resolutionSummary: "The exam was re-set and administered under closer invigilation; the source of the leak was traced to a staff photocopying error and addressed with the school.",
+    evidence: [],
+    createdAt: daysAgo(30),
+  },
+];
+
 /* ----------------------------------- surveys ----------------------------------- */
 
 const surveys: SatisfactionSurvey[] = [
@@ -1034,6 +1101,7 @@ export const db = {
   auditLog,
   districtStats,
   surveys,
+  incidents,
 };
 
 /** Simulated network latency for the mock layer. */

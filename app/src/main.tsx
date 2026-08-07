@@ -8,6 +8,9 @@ import "./styles/global.css";
 import { queryClient } from "./lib/queryClient";
 import { AppRouter } from "./router";
 import { Toaster } from "./components/feedback/Toaster";
+import { useI18nStore } from "./stores/i18nStore";
+
+void useI18nStore.getState().init();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

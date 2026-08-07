@@ -29,6 +29,7 @@ let tokenProvider: () => AccessToken = () => null;
 let onTokenRefreshed: (accessToken: string) => void = () => {};
 let onUnauthorized: () => void = () => {};
 let refreshInFlight: Promise<string | null> | null = null;
+let languageProvider: () => string = () => "en";
 
 /** Registered by the auth store at startup (avoids a circular import). */
 export function configureApiAuth(opts: {
@@ -39,6 +40,11 @@ export function configureApiAuth(opts: {
   tokenProvider = opts.getAccessToken;
   onTokenRefreshed = opts.onTokenRefreshed;
   onUnauthorized = opts.onUnauthorized;
+}
+
+/** Registered by the i18n store at startup — every request carries the current language. */
+export function configureApiLanguage(getLanguage: () => string) {
+  languageProvider = getLanguage;
 }
 
 interface BackendEnvelope<T> {
@@ -94,6 +100,7 @@ async function request<T>(path: string, init: RequestInit = {}, retried = false)
   const isFormData = init.body instanceof FormData;
   const headers: Record<string, string> = {
     ...(isFormData ? {} : { "Content-Type": "application/json" }),
+    "Accept-Language": languageProvider(),
     ...(init.headers as Record<string, string> | undefined),
   };
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;

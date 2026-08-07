@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { LogoMark } from "./Logo";
 import { Avatar } from "@/components/ui/Avatar";
 import { Dropdown } from "@/components/ui/Dropdown";
+import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
 
 export interface PortalShellProps {
   nav: NavSection[];
@@ -427,6 +428,7 @@ export function PortalShell({ nav, portalLabel, contextChip }: PortalShellProps)
           )}
 
           <div className="ml-auto flex items-center gap-1">
+            <LanguageSwitcher />
             <NotificationsBell />
             <span className="mx-1 h-4 w-px bg-line-strong hidden sm:block" aria-hidden />
             <Dropdown

@@ -12,6 +12,10 @@ const ForgotPasswordPage = lazy(() => import("@/features/auth/ForgotPasswordPage
 const SchoolOnboardingPage = lazy(() => import("@/features/auth/SchoolOnboardingPage"));
 const VerifyReceiptPage = lazy(() => import("@/features/auth/VerifyReceiptPage"));
 
+/* -------------------------------- public / incidents ------------------------ */
+const ReportIncidentPage = lazy(() => import("@/features/public/ReportIncidentPage"));
+const TrackIncidentPage = lazy(() => import("@/features/public/TrackIncidentPage"));
+
 /* ---------------------------------- parent --------------------------------- */
 const ParentDashboard = lazy(() => import("@/features/parent/ParentDashboard"));
 const DiscoverSchoolsPage = lazy(() => import("@/features/parent/DiscoverSchoolsPage"));
@@ -40,6 +44,7 @@ const VacancyPipelinePage = lazy(() => import("@/features/school/VacancyPipeline
 const SchoolTransfersPage = lazy(() => import("@/features/school/TransfersPage"));
 const SchoolProfileEditorPage = lazy(() => import("@/features/school/SchoolProfileEditorPage"));
 const SchoolSettingsPage = lazy(() => import("@/features/school/SchoolSettingsPage"));
+const SchoolIncidentsPage = lazy(() => import("@/features/school/IncidentsPage"));
 
 /* --------------------------------- teacher --------------------------------- */
 const TeacherDashboard = lazy(() => import("@/features/teacher/TeacherDashboard"));
@@ -65,6 +70,7 @@ const StaffingPage = lazy(() => import("@/features/ministry/StaffingPage"));
 const TransferTrendsPage = lazy(() => import("@/features/ministry/TransferTrendsPage"));
 const ReportsPage = lazy(() => import("@/features/ministry/ReportsPage"));
 const CircularsPage = lazy(() => import("@/features/ministry/CircularsPage"));
+const MinistryIncidentsPage = lazy(() => import("@/features/ministry/IncidentsPage"));
 
 /* ----------------------------------- admin --------------------------------- */
 const AdminDashboard = lazy(() => import("@/features/admin/AdminDashboard"));
@@ -103,6 +109,8 @@ export function AppRouter() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/school-onboarding" element={<SchoolOnboardingPage />} />
         <Route path="/verify-receipt" element={<VerifyReceiptPage />} />
+        <Route path="/report-incident" element={<ReportIncidentPage />} />
+        <Route path="/report-incident/track" element={<TrackIncidentPage />} />
 
         {/* Parent portal */}
         <Route element={<ProtectedRoute allow={["PARENT"]} />}>
@@ -140,6 +148,7 @@ export function AppRouter() {
             <Route path="/school/recruitment" element={<RecruitmentPage />} />
             <Route path="/school/recruitment/:vacancyId" element={<VacancyPipelinePage />} />
             <Route path="/school/transfers" element={<SchoolTransfersPage />} />
+            <Route path="/school/incidents" element={<SchoolIncidentsPage />} />
             <Route path="/school/profile" element={<SchoolProfileEditorPage />} />
             <Route path="/school/settings" element={<SchoolSettingsPage />} />
           </Route>
@@ -183,6 +192,7 @@ export function AppRouter() {
             <Route path="/ministry/transfers" element={<TransferTrendsPage />} />
             <Route path="/ministry/reports" element={<ReportsPage />} />
             <Route path="/ministry/circulars" element={<CircularsPage />} />
+            <Route path="/ministry/incidents" element={<MinistryIncidentsPage />} />
             <Route path="/ministry/settings" element={<AccountSettingsPage />} />
           </Route>
         </Route>

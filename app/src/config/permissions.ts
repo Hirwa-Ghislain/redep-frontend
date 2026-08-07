@@ -47,12 +47,16 @@ export const P = {
   TRANSFERS_VIEW: "transfers.view",
   TRANSFERS_MANAGE: "transfers.manage",
 
+  INCIDENTS_VIEW: "incidents.view",
+  INCIDENTS_MANAGE: "incidents.manage",
+
   // Ministry portal
   MINISTRY_DASHBOARD_VIEW: "ministry.dashboard.view",
   MINISTRY_SCHOOLS_VIEW: "ministry.schools.view",
   MINISTRY_SCHOOLS_VERIFY: "ministry.schools.verify",
   MINISTRY_REPORTS_GENERATE: "ministry.reports.generate",
   MINISTRY_ANNOUNCE: "ministry.announcements.publish",
+  MINISTRY_INCIDENTS_MANAGE: "ministry.incidents.manage",
 
   // System admin
   PLATFORM_DASHBOARD_VIEW: "platform.dashboard.view",
@@ -147,6 +151,13 @@ export const SCHOOL_PERMISSION_CATALOG: PermissionCatalogGroup[] = [
       { key: P.TRANSFERS_MANAGE, label: "Resolve transfers", description: "Confirm or reject transfer/exit requests." },
     ],
   },
+  {
+    group: "Safeguarding",
+    items: [
+      { key: P.INCIDENTS_VIEW, label: "View incident reports", description: "See safeguarding incident reports about your school." },
+      { key: P.INCIDENTS_MANAGE, label: "Acknowledge incident reports", description: "Acknowledge safeguarding incident reports." },
+    ],
+  },
 ];
 
 /** Everything school-scoped, for the SCHOOL_ADMIN built-in role. */
@@ -160,6 +171,7 @@ export const ALL_MINISTRY_PERMISSIONS: PermissionKey[] = [
   P.MINISTRY_SCHOOLS_VERIFY,
   P.MINISTRY_REPORTS_GENERATE,
   P.MINISTRY_ANNOUNCE,
+  P.MINISTRY_INCIDENTS_MANAGE,
 ];
 
 export const ALL_PLATFORM_PERMISSIONS: PermissionKey[] = [
