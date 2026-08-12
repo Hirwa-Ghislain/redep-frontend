@@ -50,3 +50,38 @@ jobs:
             ghcr.io/${{ steps.vars.outputs.owner }}/${{ matrix.image }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  bump-infra:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout infra repo
+        uses: actions/checkout@v4
+        with:
+          repository: Hirwa-Ghislain/my-dev-cluster
+          token: ${{ secrets.INFRA_DEPLOY_TOKEN }}
+          path: infra-repo
+
+      - name: Bump pinned image tags
+        working-directory: infra-repo
+        run: |
+          sed -i -E 's/^(\s*tag:\s*")[0-9a-f]{40}("\s*#.*)?$/\1${{ github.sha }}\2/' \
+            infra/charts/e-shuri-app/values.yaml \
+            infra/charts/e-shuri-website/values.yaml
+          git config user.name "e-shuri-frontend-ci"
+          git config user.email "e-shuri-frontend-ci@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "No tag change, nothing to commit."
+            exit 0
+          fi
+          git add infra/charts/e-shuri-app/values.yaml infra/charts/e-shuri-website/values.yaml
+          git commit -m "chore(e-shuri-app,e-shuri-website): deploy ${GITHUB_SHA::7}"
+          for i in 1 2 3 4 5; do
+            if git push; then
+              exit 0
+            fi
+            echo "Push rejected, rebasing onto latest infra main (attempt $i)..."
+            git pull --rebase origin main
+          done
+          echo "Failed to push infra bump after retries" >&2
+          exit 1
