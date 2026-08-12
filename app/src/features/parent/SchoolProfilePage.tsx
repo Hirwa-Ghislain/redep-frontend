@@ -11,7 +11,7 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { schoolService } from "@/services/schoolService";
 import { formatNumber, formatRWF } from "@/lib/format";
-import { FEE_CATEGORY_LABEL, SCHOOL_TYPE_LABEL } from "@/lib/status";
+import { FEE_CATEGORY_LABEL, LEVEL_LABEL, SCHOOL_TYPE_LABEL } from "@/lib/status";
 import type { FeeStructure, PublicSchoolClass, SchoolClass } from "@/types";
 
 type ClassRow = SchoolClass | PublicSchoolClass;

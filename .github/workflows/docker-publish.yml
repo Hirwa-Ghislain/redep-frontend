@@ -17,7 +17,6 @@ jobs:
           - dir: app
             image: e-shuri-app
             build_args: |
-              VITE_USE_MOCKS=false
               VITE_API_URL=http://api.eshuri.185-137-122-54.sslip.io:8880/api/v1
           - dir: website
             image: e-shuri-website

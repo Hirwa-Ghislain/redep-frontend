@@ -49,13 +49,11 @@ The login page has one-click buttons for each of these.
   system), React Router 7, TanStack Query, Zustand, Framer Motion, Recharts. Website adds GSAP
   for the splash.
 - **Role-based portals**: one login; the user's role decides the portal (`/parent`, `/school`,
-  `/teacher`, `/applicant`, `/ministry`, `/admin`). School staff use **custom roles** composed
-  by their school admin from a permission catalog; nav items and actions are permission-gated.
-- **Integration-ready**: all data flows through `app/src/services/*`, currently backed by a
-  deterministic in-memory mock DB (`app/src/mocks/db.ts`) that simulates latency and persists
-  mutations for the session. Every service function documents its intended Spring Boot
-  endpoint. Flip `VITE_USE_MOCKS=false` + set `VITE_API_URL` when the backend lands
-  (see `app/.env.example`); the JWT client with refresh hook lives in `app/src/lib/api/client.ts`.
+  `/teacher`, `/applicant`, `/ministry`, `/admin`). School staff hold the backend's fixed
+  Teacher/Accountant roles; nav items and actions are permission-gated.
+- **Live backend only**: all data flows through `app/src/services/*` against the real E-SHURI
+  backend — set `VITE_API_URL` (see `app/.env.example`); the JWT client with refresh hook lives
+  in `app/src/lib/api/client.ts`.
 - **Charts** use a colorblind-validated palette (checked with a ΔE/contrast validator) in a
   fixed series order.
 - **Splash** (`website/src/splash/`): Rwanda's map assembled from a centroid-sorted dot grid —

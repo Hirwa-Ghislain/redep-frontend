@@ -6,9 +6,7 @@ COPY package.json package-lock.json* ./
 RUN npm ci
 COPY . .
 
-ARG VITE_USE_MOCKS=false
 ARG VITE_API_URL
-ENV VITE_USE_MOCKS=$VITE_USE_MOCKS
 ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build
 
