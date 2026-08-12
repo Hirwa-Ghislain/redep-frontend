@@ -4,12 +4,11 @@ import type {
   AppNotification,
   Message,
   MessageThread,
+  NotificationType,
   RoleKey,
   ThreadParticipant,
 } from "@/types";
-import { db, nowIso, simulate, snapshot } from "@/mocks/db";
-import { uid } from "@/lib/utils";
-import { http, USE_MOCKS } from "@/lib/api/client";
+import { http } from "@/lib/api/client";
 
 interface BackendCommunication {
   id: string;
@@ -54,6 +53,31 @@ interface BackendThreadDetail extends Omit<BackendThreadSummary, "lastMessageAt"
   messages: BackendThreadMessage[];
 }
 
+interface BackendNotification {
+  id: string;
+  userId: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  metadata: Record<string, unknown> | null;
+  readAt: string | null;
+  createdAt: string;
+}
+
+function notificationFromBackend(n: BackendNotification): AppNotification {
+  const link = typeof n.metadata?.link === "string" ? n.metadata.link : undefined;
+  return {
+    id: n.id,
+    userId: n.userId,
+    type: n.type,
+    title: n.title,
+    body: n.message,
+    read: n.readAt !== null,
+    createdAt: n.createdAt,
+    link,
+  };
+}
+
 function threadFromBackend(t: BackendThreadSummary): MessageThread {
   return {
     id: t.id,
@@ -81,24 +105,6 @@ export const commsService = {
    * an explicit "under development" state instead of calling this at all.
    */
   async announcementsFor(opts: { schoolIds: string[]; audience: RoleKey }): Promise<Announcement[]> {
-    if (USE_MOCKS) {
-      const audienceMap: Partial<Record<RoleKey, Announcement["audience"][]>> = {
-        PARENT: ["ALL", "PARENTS"],
-        TEACHER: ["ALL", "TEACHERS"],
-        SCHOOL_ADMIN: ["ALL", "PARENTS", "TEACHERS", "STAFF", "SCHOOLS"],
-        SCHOOL_STAFF: ["ALL", "STAFF", "SCHOOLS"],
-        MINISTRY_ADMIN: ["ALL", "SCHOOLS"],
-        SYSTEM_ADMIN: ["ALL", "PARENTS", "TEACHERS", "STAFF", "SCHOOLS"],
-      };
-      const audiences = audienceMap[opts.audience] ?? ["ALL"];
-      const out = db.announcements.filter((a) => {
-        const inScope = a.schoolId === null || opts.schoolIds.includes(a.schoolId);
-        return inScope && audiences.includes(a.audience);
-      });
-      return simulate(
-        snapshot(out.sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.publishedAt.localeCompare(a.publishedAt))),
-      );
-    }
     if (opts.audience !== "PARENT") return [];
     const res = await http.get<{ communications: BackendCommunication[] }>("/parents/communications");
     return res.communications.map((c) => ({
@@ -122,15 +128,6 @@ export const commsService = {
    * fully live and marks the history list underneath as limited rather than faking entries.
    */
   async announcementsBySchool(schoolId: string): Promise<Announcement[]> {
-    if (USE_MOCKS) {
-      return simulate(
-        snapshot(
-          db.announcements
-            .filter((a) => a.schoolId === schoolId)
-            .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt)),
-        ),
-      );
-    }
     return [];
   },
 
@@ -148,11 +145,6 @@ export const commsService = {
     pinned?: boolean;
     classId?: string | null;
   }): Promise<Announcement> {
-    if (USE_MOCKS) {
-      const ann: Announcement = { ...input, id: uid("ann"), pinned: input.pinned ?? false, publishedAt: nowIso() };
-      db.announcements.unshift(ann);
-      return simulate(snapshot(ann));
-    }
     if (!input.schoolId) throw { code: "VALIDATION", message: "A school is required.", status: 400 };
     const res = await http.post<{ communication: { id: string; title: string; message: string; audience: "SCHOOL" | "CLASS"; createdAt: string; recipientParents: number } }>(
       `/schools/${input.schoolId}/communications`,
@@ -171,37 +163,14 @@ export const commsService = {
     };
   },
 
-  // DELETE /api/v1/announcements/:id
-  async removeAnnouncement(id: string): Promise<void> {
-    const i = db.announcements.findIndex((a) => a.id === id);
-    if (i >= 0) db.announcements.splice(i, 1);
-    return simulate(undefined);
-  },
-
   // GET /api/v1/users/:id/threads  |  live: GET /api/v1/messaging/threads (auth-scoped)
   async threadsFor(userId: string): Promise<MessageThread[]> {
-    if (USE_MOCKS) {
-      return simulate(
-        snapshot(
-          db.threads
-            .filter((t) => t.participants.some((p) => p.id === userId))
-            .sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt)),
-        ),
-      );
-    }
     const res = await http.get<{ threads: BackendThreadSummary[] }>("/messaging/threads");
     return res.threads.map(threadFromBackend);
   },
 
   /** School-office inbox: all threads that include any school-side participant. */
   async threadsForSchool(schoolId: string): Promise<MessageThread[]> {
-    if (USE_MOCKS) {
-      return simulate(
-        snapshot(
-          db.threads.filter((t) => t.schoolId === schoolId).sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt)),
-        ),
-      );
-    }
     // Live: the backend scopes /messaging/threads to the caller's own school via
     // administratorId/staff membership — no explicit schoolId filter needed or accepted.
     const res = await http.get<{ threads: BackendThreadSummary[] }>("/messaging/threads");
@@ -210,12 +179,6 @@ export const commsService = {
 
   // GET /api/v1/threads/:id/messages  |  live: GET /api/v1/messaging/threads/:id
   async messages(threadId: string): Promise<Message[]> {
-    if (USE_MOCKS) {
-      return simulate(
-        snapshot(db.messages.filter((m) => m.threadId === threadId).sort((a, b) => a.sentAt.localeCompare(b.sentAt))),
-        250,
-      );
-    }
     const res = await http.get<{ thread: BackendThreadDetail }>(`/messaging/threads/${threadId}`);
     return res.thread.messages.map((m) => ({
       id: m.id,
@@ -230,24 +193,6 @@ export const commsService = {
 
   // POST /api/v1/threads/:id/messages  |  live: POST /api/v1/messaging/threads/:id/messages
   async send(input: { threadId: string; senderId: string; senderName: string; senderRole: RoleKey; body: string }): Promise<Message> {
-    if (USE_MOCKS) {
-      const thread = db.threads.find((t) => t.id === input.threadId);
-      if (!thread) throw { code: "NOT_FOUND", message: "Thread not found.", status: 404 };
-      const msg: Message = { ...input, id: uid("msg"), sentAt: nowIso() };
-      db.messages.push(msg);
-      thread.lastMessageAt = msg.sentAt;
-      thread.lastMessagePreview = msg.body.slice(0, 80);
-      for (const p of thread.participants) {
-        if (p.id === input.senderId) continue;
-        db.notifications.unshift({
-          id: uid("nt"), userId: p.id, type: "MESSAGE",
-          title: `New message from ${input.senderName}`, body: thread.subject,
-          read: false, createdAt: msg.sentAt,
-          link: p.role === "PARENT" ? "/parent/messages" : p.role === "TEACHER" ? "/teacher/messages" : "/school/messages",
-        });
-      }
-      return simulate(snapshot(msg), 300);
-    }
     const res = await http.post<{ message: BackendThreadMessage }>(`/messaging/threads/${input.threadId}/messages`, {
       message: input.body,
     });
@@ -271,17 +216,6 @@ export const commsService = {
     participants: ThreadParticipant[];
     firstMessage: { senderId: string; senderName: string; senderRole: RoleKey; body: string };
   }): Promise<MessageThread> {
-    if (USE_MOCKS) {
-      const thread: MessageThread = {
-        id: uid("th"), subject: input.subject, schoolId: input.schoolId,
-        studentId: input.studentId, studentName: input.studentName,
-        participants: input.participants, lastMessageAt: nowIso(),
-        lastMessagePreview: input.firstMessage.body.slice(0, 80), unreadCount: 0,
-      };
-      db.threads.unshift(thread);
-      await this.send({ threadId: thread.id, ...input.firstMessage });
-      return simulate(snapshot(db.threads.find((t) => t.id === thread.id)!));
-    }
     const res = await http.post<{ thread: BackendThreadDetail }>("/messaging/threads", {
       schoolId: input.schoolId,
       subject: input.subject,
@@ -300,21 +234,18 @@ export const commsService = {
     });
   },
 
-  // GET /api/v1/users/:id/notifications
-  async notifications(userId: string): Promise<AppNotification[]> {
-    return simulate(
-      snapshot(
-        db.notifications.filter((n) => n.userId === userId).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-      ),
-      200,
-    );
+  // GET /api/v1/notifications — auth-scoped, no userId param needed server-side.
+  async notifications(): Promise<AppNotification[]> {
+    const res = await http.get<{ notifications: BackendNotification[] }>("/notifications");
+    return res.notifications.map(notificationFromBackend);
   },
 
-  // POST /api/v1/notifications/mark-read
-  async markNotificationsRead(userId: string, ids?: string[]): Promise<void> {
-    for (const n of db.notifications) {
-      if (n.userId === userId && (!ids || ids.includes(n.id))) n.read = true;
+  // PATCH /api/v1/notifications/read-all | PATCH /api/v1/notifications/:id/read
+  async markNotificationsRead(ids?: string[]): Promise<void> {
+    if (!ids || ids.length === 0) {
+      await http.patch("/notifications/read-all");
+      return;
     }
-    return simulate(undefined, 120);
+    await Promise.all(ids.map((id) => http.patch(`/notifications/${id}/read`)));
   },
 };

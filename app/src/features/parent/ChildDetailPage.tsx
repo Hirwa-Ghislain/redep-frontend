@@ -15,11 +15,8 @@ import { Tabs } from "@/components/ui/Tabs";
 import { Textarea } from "@/components/ui/Input";
 import { UnderDevelopment } from "@/components/ui/UnderDevelopment";
 import { useAuth } from "@/hooks/useAuth";
-import { academicService } from "@/services/academicService";
 import { commsService } from "@/services/commsService";
-import { feeService } from "@/services/feeService";
 import { fetchParentAttendance, studentService } from "@/services/studentService";
-import { USE_MOCKS } from "@/lib/api/client";
 import { toast } from "@/stores/uiStore";
 import { formatDate, formatRWF, fullName, percent } from "@/lib/format";
 import { ATTENDANCE_STATUS, FEE_CATEGORY_LABEL, STUDENT_STATUS } from "@/lib/status";
@@ -38,35 +35,20 @@ export default function ChildDetailPage() {
     queryKey: ["student-context", studentId],
     queryFn: () => studentService.context(studentId),
   });
-  // The real backend has no academic-term/gradebook concept — mock-mode only.
-  const { data: term } = useQuery({ queryKey: ["current-term"], queryFn: () => academicService.currentTerm(), enabled: USE_MOCKS });
-  const { data: academics } = useQuery({
-    queryKey: ["student-academics", studentId],
-    queryFn: () => academicService.studentSummary(studentId),
-    enabled: USE_MOCKS,
-  });
   const { data: realAttendance } = useQuery({
     queryKey: ["student-attendance", studentId],
     queryFn: () => fetchParentAttendance(studentId),
-    enabled: !USE_MOCKS,
   });
-  const { data: mockBalances = [] } = useQuery({
-    queryKey: ["balances", studentId, term?.id],
-    queryFn: () => feeService.balances(studentId, term!.id),
-    enabled: USE_MOCKS && Boolean(term),
-  });
-  const balances: FeeBalance[] = USE_MOCKS
-    ? mockBalances
-    : (context?.student.charges ?? []).map((c) => ({
-        studentId,
-        feeStructureId: c.id,
-        feeName: c.feeName,
-        category: c.feeType,
-        billed: c.amountDue,
-        paid: c.amountPaid,
-        due: Math.max(0, c.amountDue - c.amountPaid),
-      }));
-  const attendanceRate = USE_MOCKS ? academics?.attendanceRate : realAttendance?.attendanceRate;
+  const balances: FeeBalance[] = (context?.student.charges ?? []).map((c) => ({
+    studentId,
+    feeStructureId: c.id,
+    feeName: c.feeName,
+    category: c.feeType,
+    billed: c.amountDue,
+    paid: c.amountPaid,
+    due: Math.max(0, c.amountDue - c.amountPaid),
+  }));
+  const attendanceRate = realAttendance?.attendanceRate;
 
   const startThread = useMutation({
     mutationFn: () =>
@@ -127,7 +109,7 @@ export default function ChildDetailPage() {
               <p className={`font-display font-bold text-[16px] tnum leading-5 ${totalDue ? "text-clay-deep" : "text-primary-deep"}`}>
                 {formatRWF(totalDue)}
               </p>
-              <p className="text-[11px] text-muted">{USE_MOCKS ? "Due this term" : "Due"}</p>
+              <p className="text-[11px] text-muted">Due</p>
             </div>
             <Badge variant={statusMeta.variant} dot>{statusMeta.label}</Badge>
           </div>
@@ -148,66 +130,18 @@ export default function ChildDetailPage() {
       {tab === "academics" && (
         <div className="grid lg:grid-cols-3 gap-4 items-start">
           <div className="lg:col-span-2">
-            {USE_MOCKS ? (
-              <>
-                <Card padded={false}>
-                  <CardHeader className="px-5 pt-5" title="Assessments & grades" description="Recorded by teachers throughout the year." />
-                  <DataTable
-                    columns={[
-                      { key: "date", header: "Date", render: (a: NonNullable<typeof academics>["assessments"][number]) => <span className="tnum">{formatDate(a.date)}</span> },
-                      { key: "subject", header: "Subject" },
-                      { key: "title", header: "Assessment" },
-                      {
-                        key: "score",
-                        header: "Score",
-                        align: "right",
-                        render: (a) =>
-                          a.grade ? (
-                            <span className={`tnum font-semibold ${a.grade.score / a.maxScore >= 0.5 ? "text-primary-deep" : "text-clay-deep"}`}>
-                              {a.grade.score}/{a.maxScore}
-                            </span>
-                          ) : (
-                            <span className="text-faint">—</span>
-                          ),
-                      },
-                    ]}
-                    rows={academics?.assessments ?? []}
-                    keyField={(a) => a.id}
-                    pageSize={8}
-                    empty="No assessments recorded yet."
-                  />
-                </Card>
-                {academics?.assessments.some((a) => a.grade?.comment) && (
-                  <Card className="mt-4">
-                    <CardHeader title="Teacher comments" />
-                    <ul className="space-y-3">
-                      {academics.assessments
-                        .filter((a) => a.grade?.comment)
-                        .slice(0, 4)
-                        .map((a) => (
-                          <li key={a.id} className="rounded-xl bg-paper/70 border border-line px-4 py-3">
-                            <p className="text-[13.5px] text-ink">“{a.grade!.comment}”</p>
-                            <p className="text-[12px] text-faint mt-1">{a.subject} · {a.title}</p>
-                          </li>
-                        ))}
-                    </ul>
-                  </Card>
-                )}
-              </>
-            ) : (
-              <Card padded={false}>
-                <UnderDevelopment
-                  title="Gradebook not available yet"
-                  description="The school system doesn't have an assessments/grades module yet — attendance (alongside) is real and live."
-                  className="py-10"
-                />
-              </Card>
-            )}
+            <Card padded={false}>
+              <UnderDevelopment
+                title="Gradebook not available yet"
+                description="The school system doesn't have an assessments/grades module yet — attendance (alongside) is real and live."
+                className="py-10"
+              />
+            </Card>
           </div>
           <Card>
             <CardHeader title="Recent attendance" />
             <ul className="space-y-2">
-              {(USE_MOCKS ? academics?.recentAttendance ?? [] : realAttendance?.recent ?? []).slice(0, 10).map((r) => {
+              {(realAttendance?.recent ?? []).slice(0, 10).map((r) => {
                 const meta = ATTENDANCE_STATUS[r.status];
                 return (
                   <li key={r.id} className="flex items-center justify-between text-[13px]">
@@ -219,7 +153,7 @@ export default function ChildDetailPage() {
                   </li>
                 );
               })}
-              {(USE_MOCKS ? academics?.recentAttendance ?? [] : realAttendance?.recent ?? []).length === 0 && (
+              {(realAttendance?.recent ?? []).length === 0 && (
                 <p className="text-[13px] text-muted py-4 text-center">No attendance records yet.</p>
               )}
             </ul>
@@ -260,7 +194,7 @@ export default function ChildDetailPage() {
           <Card padded={false} className="min-w-0">
             <CardHeader
               className="px-5 pt-5"
-              title={USE_MOCKS ? `Balance — ${term?.label ?? ""}` : "Balance"}
+              title="Balance"
               description="Pay from the Fees & payments page; receipts are automatic."
             />
             <DataTable

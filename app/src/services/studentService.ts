@@ -1,6 +1,5 @@
-import type { School, SchoolClass, Student, StudentStatus, TeacherProfile } from "@/types";
-import { db, simulate, snapshot } from "@/mocks/db";
-import { http, USE_MOCKS } from "@/lib/api/client";
+import type { School, SchoolClass, Student, TeacherProfile } from "@/types";
+import { http } from "@/lib/api/client";
 
 /** One fee charge for a student, as returned nested in the real `/parents/children/:id` dashboard. */
 export interface StudentChargeSummary {
@@ -26,12 +25,6 @@ export interface StudentWithContext extends Student {
   /** Real-backend-only: the active `StudentEnrollment` id — required for
    *  `POST /parents/enrollments/:id/resignation` (transferService). */
   enrollmentId?: string;
-}
-
-function withContext(s: Student): StudentWithContext {
-  const cls = db.classes.find((c) => c.id === s.classId);
-  const school = db.schools.find((sc) => sc.id === s.schoolId);
-  return { ...snapshot(s), className: cls?.name ?? "—", schoolName: school?.name ?? "—" };
 }
 
 /* ------------------------------------------------------------------------ */
@@ -224,32 +217,14 @@ export async function fetchParentAttendance(studentId: string): Promise<ParentAt
 }
 
 export const studentService = {
-  // GET /api/v1/schools/:id/students?status=&classId=&q= — school-admin/accountant only, mock-only here.
-  async listBySchool(schoolId: string, opts: { status?: StudentStatus; classId?: string; q?: string } = {}): Promise<StudentWithContext[]> {
-    let out = db.students.filter((s) => s.schoolId === schoolId);
-    if (opts.status) out = out.filter((s) => s.status === opts.status);
-    if (opts.classId) out = out.filter((s) => s.classId === opts.classId);
-    if (opts.q) {
-      const q = opts.q.toLowerCase();
-      out = out.filter((s) => `${s.firstName} ${s.lastName}`.toLowerCase().includes(q));
-    }
-    return simulate(out.map(withContext));
-  },
-
   // GET /parents/children
   async listByParent(parentId: string): Promise<StudentWithContext[]> {
-    if (USE_MOCKS) return simulate(db.students.filter((s) => s.parentId === parentId).map(withContext));
     const res = await http.get<{ children: BackendChild[] }>("/parents/children");
     return res.children.map(mapChildToStudent).filter((s): s is StudentWithContext => s !== null);
   },
 
   // GET /parents/children/:id (dashboard) — reused for a single child's flat summary.
   async get(id: string): Promise<StudentWithContext> {
-    if (USE_MOCKS) {
-      const st = db.students.find((s) => s.id === id);
-      if (!st) throw { code: "NOT_FOUND", message: "Student not found.", status: 404 };
-      return simulate(withContext(st));
-    }
     const dashboard = await fetchDashboard(id);
     const mapped = mapChildToStudent(dashboard);
     if (!mapped) throw { code: "NOT_FOUND", message: "Student has no active enrollment yet.", status: 404 };
@@ -260,19 +235,6 @@ export const studentService = {
   /** School, class and teachers for one child — powers the parent's child page. */
   // GET /parents/children/:id (dashboard)
   async context(id: string): Promise<{ student: StudentWithContext; school: School; schoolClass: SchoolClass | null; teachers: TeacherProfile[] }> {
-    if (USE_MOCKS) {
-      const st = db.students.find((s) => s.id === id);
-      if (!st) throw { code: "NOT_FOUND", message: "Student not found.", status: 404 };
-      const school = db.schools.find((s) => s.id === st.schoolId)!;
-      const schoolClass = db.classes.find((c) => c.id === st.classId) ?? null;
-      const teachers = db.teachers.filter((t) => t.classIds.includes(st.classId));
-      return simulate({
-        student: withContext(st),
-        school: snapshot(school),
-        schoolClass: schoolClass ? snapshot(schoolClass) : null,
-        teachers: snapshot(teachers),
-      });
-    }
     const dashboard = await fetchDashboard(id);
     const picked = pickEnrollment(dashboard.enrollments);
     const mapped = mapChildToStudent(dashboard);
@@ -295,37 +257,11 @@ export const studentService = {
     };
   },
 
-  // PATCH /api/v1/students/:id — school-admin only, mock-only here.
-  async update(id: string, patch: Partial<Pick<Student, "classId" | "status" | "leftAt">>): Promise<Student> {
-    const st = db.students.find((s) => s.id === id);
-    if (!st) throw { code: "NOT_FOUND", message: "Student not found.", status: 404 };
-    Object.assign(st, patch);
-    return simulate(snapshot(st));
-  },
-
   /** Real enrolled/former student directory. GET /schools/:schoolId/students */
   async listRealBySchool(
     schoolId: string,
     opts: { status?: RealStudentRow["status"]; classId?: string; q?: string } = {},
   ): Promise<RealStudentRow[]> {
-    if (USE_MOCKS) {
-      let out = db.students.filter((s) => s.schoolId === schoolId).map((s) => {
-        const cls = db.classes.find((c) => c.id === s.classId);
-        const status: RealStudentRow["status"] = s.status === "ENROLLED" ? "ACTIVE" : "RESIGNED";
-        return {
-          enrollmentId: s.id, studentId: s.id, firstName: s.firstName, lastName: s.lastName,
-          dateOfBirth: s.dateOfBirth, classId: s.classId, className: cls?.name ?? "—",
-          status, enrolledAt: s.admissionDate,
-        };
-      });
-      if (opts.status) out = out.filter((s) => s.status === opts.status);
-      if (opts.classId) out = out.filter((s) => s.classId === opts.classId);
-      if (opts.q) {
-        const q = opts.q.toLowerCase();
-        out = out.filter((s) => `${s.firstName} ${s.lastName}`.toLowerCase().includes(q));
-      }
-      return simulate(out);
-    }
     const usp = new URLSearchParams();
     if (opts.status) usp.set("status", opts.status);
     if (opts.classId) usp.set("classId", opts.classId);
@@ -333,6 +269,19 @@ export const studentService = {
     const qs = usp.toString();
     const res = await http.get<{ students: RealStudentRow[] }>(`/schools/${schoolId}/students${qs ? `?${qs}` : ""}`);
     return res.students;
+  },
+
+  /** Corrects a student's name/date of birth. PATCH /schools/:schoolId/students/:studentId */
+  async updateRealStudent(
+    schoolId: string,
+    studentId: string,
+    input: { firstName?: string; lastName?: string; dateOfBirth?: string },
+  ): Promise<{ id: string; firstName: string; lastName: string; dateOfBirth: string }> {
+    const res = await http.patch<{ student: { id: string; firstName: string; lastName: string; dateOfBirth: string } }>(
+      `/schools/${schoolId}/students/${studentId}`,
+      input,
+    );
+    return res.student;
   },
 };
 

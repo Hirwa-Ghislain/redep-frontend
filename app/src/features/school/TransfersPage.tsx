@@ -13,7 +13,7 @@ import { transferService } from "@/services/transferService";
 import { toast } from "@/stores/uiStore";
 import { formatDate } from "@/lib/format";
 import { TRANSFER_STATUS } from "@/lib/status";
-import { USE_MOCKS, type ApiError } from "@/lib/api/client";
+import type { ApiError } from "@/lib/api/client";
 import type { TransferRequest } from "@/types";
 
 export default function TransfersPage() {
@@ -28,10 +28,6 @@ export default function TransfersPage() {
 
   const decide = useMutation({
     mutationFn: async (input: { id: string; approve: boolean }): Promise<void> => {
-      if (USE_MOCKS) {
-        await transferService.resolve(input.id, input.approve ? "CONFIRMED" : "REJECTED", `${user!.firstName} ${user!.lastName}`);
-        return;
-      }
       await transferService.resolveReal(schoolId, input.id, input.approve);
     },
     onSuccess: (_result, input) => {

@@ -1,10 +1,8 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
-  ArrowRight,
   BookOpenCheck,
   CalendarCheck,
-  ClipboardList,
   GraduationCap,
   Megaphone,
   MessageSquare,
@@ -40,14 +38,6 @@ export default function TeacherDashboard() {
     enabled: Boolean(user),
   });
 
-  const { data: term } = useQuery({ queryKey: ["current-term"], queryFn: () => academicService.currentTerm() });
-
-  const { data: assessments = [], isLoading: loadingAssessments } = useQuery({
-    queryKey: ["assessments", user?.id],
-    queryFn: () => academicService.assessmentsByTeacher(user!.id),
-    enabled: Boolean(user),
-  });
-
   const { data: threads = [] } = useQuery({
     queryKey: ["threads", user?.id],
     queryFn: () => commsService.threadsFor(user!.id),
@@ -61,14 +51,11 @@ export default function TeacherDashboard() {
   });
 
   const totalStudents = classes.reduce((sum, c) => sum + c.students.length, 0);
-  const assessmentsThisTerm = term ? assessments.filter((a) => a.termId === term.id).length : 0;
   const unread = threads.reduce((sum, t) => sum + t.unreadCount, 0);
-  const classNameById = new Map(classes.map((c) => [c.id, c.name]));
 
   return (
     <PageTransition>
       <HeroBanner
-        eyebrow={term?.label ?? "This term"}
         title={`Muraho, ${user?.firstName ?? "teacher"}`}
         subtitle={teacher ? teacher.subjects.join(" · ") : undefined}
         stats={[
@@ -88,7 +75,7 @@ export default function TeacherDashboard() {
       />
 
       {/* KPI row */}
-      <Stagger className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <Stagger className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <StaggerItem>
           <StatCard
             label="My classes"
@@ -99,14 +86,6 @@ export default function TeacherDashboard() {
         </StaggerItem>
         <StaggerItem>
           <StatCard label="My students" value={loadingClasses ? "…" : String(totalStudents)} icon={Users} tone="sky" />
-        </StaggerItem>
-        <StaggerItem>
-          <StatCard
-            label={`Assessments${term ? ` — ${term.label}` : " this term"}`}
-            value={loadingAssessments || !term ? "…" : String(assessmentsThisTerm)}
-            icon={ClipboardList}
-            tone="gold"
-          />
         </StaggerItem>
         <StaggerItem>
           <StatCard label="Unread messages" value={String(unread)} icon={MessageSquare} tone={unread ? "clay" : "default"} />
@@ -165,50 +144,6 @@ export default function TeacherDashboard() {
                       </Link>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </Card>
-
-          {/* Recent assessments */}
-          <Card padded={false}>
-            <CardHeader
-              className="px-5 pt-4"
-              title="Recent assessments"
-              description="Open one to enter or review scores."
-              action={
-                <Link to="/teacher/assessments" className="text-[12.5px] font-medium text-primary-deep hover:underline">
-                  All assessments
-                </Link>
-              }
-            />
-            {loadingAssessments ? (
-              <div className="px-5 pb-5">
-                <CardSkeleton />
-              </div>
-            ) : assessments.length === 0 ? (
-              <EmptyState
-                icon={ClipboardList}
-                title="No assessments yet"
-                description="Create your first assessment from the Assessments page."
-              />
-            ) : (
-              <div className="divide-y divide-line">
-                {assessments.slice(0, 5).map((a) => (
-                  <Link
-                    key={a.id}
-                    to={`/teacher/assessments/${a.id}`}
-                    className="flex items-center gap-3 px-5 py-2.5 hover:bg-paper/70 transition-colors group"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[13px] font-medium text-ink truncate">{a.title}</p>
-                      <p className="text-[12px] text-muted">
-                        {a.subject} · {classNameById.get(a.classId) ?? "—"}
-                      </p>
-                    </div>
-                    <span className="text-[12px] text-faint tnum">{formatDate(a.date)}</span>
-                    <ArrowRight className="size-4 text-faint group-hover:text-primary-deep group-hover:translate-x-0.5 transition-all" />
-                  </Link>
                 ))}
               </div>
             )}

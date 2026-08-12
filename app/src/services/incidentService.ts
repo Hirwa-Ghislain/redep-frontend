@@ -1,7 +1,5 @@
 import type { Incident, IncidentReportInput, IncidentSeverity, IncidentStatus } from "@/types";
-import { db, nowIso, simulate, snapshot } from "@/mocks/db";
-import { refCode, uid } from "@/lib/utils";
-import { http, USE_MOCKS } from "@/lib/api/client";
+import { http } from "@/lib/api/client";
 
 export interface IncidentSubmissionResult {
   referenceCode: string;
@@ -32,49 +30,9 @@ function toFormData(input: IncidentReportInput): FormData {
   return form;
 }
 
-function mockSeverity(input: IncidentReportInput): IncidentSeverity {
-  if (input.immediateDanger) return "CRITICAL";
-  if (["PHYSICAL_VIOLENCE", "SEXUAL_ABUSE", "WEAPON"].includes(input.category)) return "HIGH";
-  if (["HARASSMENT", "BULLYING", "DISCRIMINATION", "DRUGS", "UNSAFE_CONDITIONS"].includes(input.category)) return "MEDIUM";
-  return "LOW";
-}
-
-function mockSubmit(input: IncidentReportInput, files?: File[]): IncidentSubmissionResult {
-  const referenceCode = refCode("INC");
-  const trackingCode = uid("trk").toUpperCase();
-  const incident: Incident = {
-    id: uid("inc"),
-    referenceCode,
-    schoolId: input.schoolId,
-    reporterType: input.reporterType,
-    reporterName: input.identityProtected === false ? input.reporterName : undefined,
-    reporterEmail: input.identityProtected === false ? input.reporterEmail : undefined,
-    reporterPhone: input.identityProtected === false ? input.reporterPhone : undefined,
-    identityProtected: input.identityProtected ?? true,
-    category: input.category,
-    subjectType: input.subjectType,
-    subjectName: input.subjectName,
-    title: input.title,
-    description: input.description,
-    location: input.location,
-    occurredAt: input.occurredAt,
-    immediateDanger: input.immediateDanger ?? false,
-    severity: mockSeverity(input),
-    status: "SUBMITTED",
-    evidence: (files ?? []).map((f) => ({ id: uid("ev"), filename: f.name })),
-    createdAt: nowIso(),
-  };
-  db.incidents.push(incident);
-  // A real tracking lookup only needs the reference + tracking code; store the code on the
-  // record itself in mock mode since there's no separate hash table to check against.
-  (incident as Incident & { _trackingCode?: string })._trackingCode = trackingCode;
-  return { referenceCode, trackingCode };
-}
-
 export const incidentService = {
   // POST /incidents/public — anonymous or named, no auth required.
   async reportPublic(input: IncidentReportInput, files?: File[]): Promise<IncidentSubmissionResult> {
-    if (USE_MOCKS) return simulate(mockSubmit(input, files));
     const form = toFormData(input);
     appendEvidence(form, files);
     return http.post<IncidentSubmissionResult>("/incidents/public", form);
@@ -82,7 +40,6 @@ export const incidentService = {
 
   // POST /incidents — same shape, but the reporter is the authenticated user.
   async reportAuthenticated(input: IncidentReportInput, files?: File[]): Promise<IncidentSubmissionResult> {
-    if (USE_MOCKS) return simulate(mockSubmit(input, files));
     const form = toFormData(input);
     appendEvidence(form, files);
     return http.post<IncidentSubmissionResult>("/incidents", form);
@@ -90,12 +47,6 @@ export const incidentService = {
 
   // GET /incidents/public/:referenceCode?trackingCode=...
   async track(referenceCode: string, trackingCode: string): Promise<Incident | null> {
-    if (USE_MOCKS) {
-      const incident = db.incidents.find(
-        (i) => i.referenceCode === referenceCode && (i as Incident & { _trackingCode?: string })._trackingCode === trackingCode,
-      );
-      return simulate(incident ? snapshot(incident) : null);
-    }
     try {
       return await http.get<Incident>(`/incidents/public/${encodeURIComponent(referenceCode)}?trackingCode=${encodeURIComponent(trackingCode)}`);
     } catch {
@@ -105,12 +56,6 @@ export const incidentService = {
 
   // GET /schools/:schoolId/incidents
   async forSchool(schoolId: string, params: { status?: IncidentStatus; severity?: IncidentSeverity } = {}): Promise<Incident[]> {
-    if (USE_MOCKS) {
-      let out = db.incidents.filter((i) => i.schoolId === schoolId);
-      if (params.status) out = out.filter((i) => i.status === params.status);
-      if (params.severity) out = out.filter((i) => i.severity === params.severity);
-      return simulate(snapshot(out));
-    }
     const qs = new URLSearchParams();
     if (params.status) qs.set("status", params.status);
     if (params.severity) qs.set("severity", params.severity);
@@ -121,13 +66,6 @@ export const incidentService = {
 
   // PATCH /schools/:schoolId/incidents/:incidentId/acknowledge
   async acknowledge(schoolId: string, incidentId: string): Promise<void> {
-    if (USE_MOCKS) {
-      const incident = db.incidents.find((i) => i.id === incidentId && i.schoolId === schoolId);
-      if (!incident) throw { code: "NOT_FOUND", message: "Incident not found.", status: 404 };
-      incident.schoolAcknowledgedAt = nowIso();
-      await simulate(null);
-      return;
-    }
     await http.patch(`/schools/${schoolId}/incidents/${incidentId}/acknowledge`);
   },
 
@@ -135,13 +73,6 @@ export const incidentService = {
   async authorityList(
     params: { schoolId?: string; severity?: IncidentSeverity; status?: IncidentStatus; page?: number; limit?: number } = {},
   ): Promise<Incident[]> {
-    if (USE_MOCKS) {
-      let out = db.incidents;
-      if (params.schoolId) out = out.filter((i) => i.schoolId === params.schoolId);
-      if (params.severity) out = out.filter((i) => i.severity === params.severity);
-      if (params.status) out = out.filter((i) => i.status === params.status);
-      return simulate(snapshot(out).map((i) => ({ ...i, schoolName: db.schools.find((s) => s.id === i.schoolId)?.name })));
-    }
     const qs = new URLSearchParams();
     if (params.schoolId) qs.set("schoolId", params.schoolId);
     if (params.severity) qs.set("severity", params.severity);
@@ -158,14 +89,6 @@ export const incidentService = {
     incidentId: string,
     input: { status: IncidentStatus; note: string; visibleToReporter?: boolean; resolutionSummary?: string },
   ): Promise<void> {
-    if (USE_MOCKS) {
-      const incident = db.incidents.find((i) => i.id === incidentId);
-      if (!incident) throw { code: "NOT_FOUND", message: "Incident not found.", status: 404 };
-      incident.status = input.status;
-      if (input.resolutionSummary) incident.resolutionSummary = input.resolutionSummary;
-      await simulate(null);
-      return;
-    }
     await http.patch(`/education-authority/incidents/${incidentId}`, input);
   },
 };

@@ -15,7 +15,6 @@ import { studentService } from "@/services/studentService";
 import { schoolService } from "@/services/schoolService";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { USE_MOCKS } from "@/lib/api/client";
 import type { AnnouncementCategory } from "@/types";
 
 const CATEGORY_META: Record<AnnouncementCategory, { label: string; variant: BadgeVariant }> = {
@@ -35,7 +34,7 @@ export default function AnnouncementsFeedPage() {
   // only `GET /parents/communications` exists (school.routes.ts / education-authority.routes.ts
   // have no equivalent for TEACHER). Rather than call a nonexistent/wrong-role endpoint, be
   // honest about the gap for that role in live mode.
-  if (!USE_MOCKS && role === "TEACHER") {
+  if (role === "TEACHER") {
     return (
       <PageTransition>
         <PageHeader title="Announcements" description="Notices from your schools and national circulars, newest first." />

@@ -1,13 +1,12 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, Briefcase, ShieldCheck, UsersRound } from "lucide-react";
+import { ArrowRight, Briefcase, Building2, ShieldCheck, UsersRound } from "lucide-react";
 import { AuthLayout } from "@/components/layout/AuthLayout";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useAuthStore } from "@/stores/authStore";
 import { PORTAL_HOME } from "@/config/roles";
 import type { ApiError } from "@/lib/api/client";
-import { USE_MOCKS } from "@/lib/api/client";
 import type { PendingVerification } from "@/services/authService";
 import { cn } from "@/lib/utils";
 import { RWANDA_PHONE, isAdult, passwordIssue } from "@/lib/validation";
@@ -21,7 +20,7 @@ export default function RegisterPage() {
   const preferredLanguage = useI18nStore((s) => s.language);
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>("DETAILS");
-  const [role, setRole] = useState<"PARENT" | "APPLICANT">("PARENT");
+  const [role, setRole] = useState<"PARENT" | "APPLICANT" | "SCHOOL_ADMIN">("PARENT");
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -40,6 +39,11 @@ export default function RegisterPage() {
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [key]: e.target.value }));
 
+  // A freshly registered school administrator has no school yet — send them to complete
+  // their school's NESA-matched profile (`/school-onboarding`, POST /schools) instead of the
+  // dashboard, which requires a schoolId.
+  const destination = role === "SCHOOL_ADMIN" ? "/school-onboarding" : PORTAL_HOME[role];
+
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const next: Record<string, string> = {};
@@ -50,11 +54,9 @@ export default function RegisterPage() {
     const pwIssue = passwordIssue(form.password);
     if (pwIssue) next.password = pwIssue;
     if (form.confirmPassword !== form.password) next.confirmPassword = "Passwords do not match";
-    if (!USE_MOCKS) {
-      if (!/^\d{16}$/.test(form.nationalId)) next.nationalId = "Enter your 16-digit National ID";
-      if (!form.dateOfBirth) next.dateOfBirth = "Required";
-      else if (!isAdult(form.dateOfBirth)) next.dateOfBirth = "Must be at least 18 years old";
-    }
+    if (!/^\d{16}$/.test(form.nationalId)) next.nationalId = "Enter your 16-digit National ID";
+    if (!form.dateOfBirth) next.dateOfBirth = "Required";
+    else if (!isAdult(form.dateOfBirth)) next.dateOfBirth = "Must be at least 18 years old";
     setErrors(next);
     if (Object.keys(next).length) return;
 
@@ -66,7 +68,7 @@ export default function RegisterPage() {
         setPending(result);
         setStep("VERIFY");
       } else {
-        navigate(PORTAL_HOME[role], { replace: true });
+        navigate(destination, { replace: true });
       }
     } catch (err) {
       const apiErr = err as ApiError;
@@ -86,7 +88,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await verifyAccount({ verificationMethod: "EMAIL", identifier: pending.email, otp });
-      navigate(PORTAL_HOME[role], { replace: true });
+      navigate(destination, { replace: true });
     } catch (err) {
       const apiErr = err as ApiError;
       setErrors({ otp: apiErr.message });
@@ -134,14 +136,21 @@ export default function RegisterPage() {
     <AuthLayout>
       <h1 className="font-display text-[26px] font-bold text-ink">Create your account</h1>
       <p className="text-muted text-[14px] mt-1 mb-6">
-        Parents manage children and fees; applicants apply for school jobs.
+        Parents manage children and fees; applicants apply for school jobs; school administrators
+        register their school.
       </p>
 
-      <div className="grid grid-cols-2 gap-2 mb-6" role="radiogroup" aria-label="Account type">
+      <div className="grid grid-cols-1 gap-2 mb-6" role="radiogroup" aria-label="Account type">
         {(
           [
             { value: "PARENT", label: "Parent / Guardian", icon: UsersRound, blurb: "Register & follow your children" },
             { value: "APPLICANT", label: "Job applicant", icon: Briefcase, blurb: "Find work in schools" },
+            {
+              value: "SCHOOL_ADMIN",
+              label: "School administrator",
+              icon: Building2,
+              blurb: "Register your account, then add your school's official details",
+            },
           ] as const
         ).map((opt) => (
           <button
@@ -151,18 +160,31 @@ export default function RegisterPage() {
             aria-checked={role === opt.value}
             onClick={() => setRole(opt.value)}
             className={cn(
-              "rounded-(--radius-card) border p-3.5 text-left transition-all duration-150",
+              "flex items-start gap-3 rounded-(--radius-card) border p-3.5 text-left transition-all duration-150",
               role === opt.value
                 ? "border-primary bg-primary-soft/60 ring-2 ring-primary/15"
                 : "border-line bg-surface hover:border-line-strong",
             )}
           >
-            <opt.icon className={cn("size-5 mb-2", role === opt.value ? "text-primary-deep" : "text-muted")} />
-            <p className="text-[13.5px] font-semibold text-ink">{opt.label}</p>
-            <p className="text-[12px] text-muted mt-0.5">{opt.blurb}</p>
+            <opt.icon className={cn("size-5 shrink-0 mt-0.5", role === opt.value ? "text-primary-deep" : "text-muted")} />
+            <span>
+              <p className="text-[13.5px] font-semibold text-ink">{opt.label}</p>
+              <p className="text-[12px] text-muted mt-0.5">{opt.blurb}</p>
+            </span>
           </button>
         ))}
       </div>
+
+      {role === "SCHOOL_ADMIN" && (
+        <div className="mb-4 flex items-start gap-2.5 rounded-(--radius-card) border border-line bg-sky-soft/60 px-4 py-3 text-[13px] text-sky-deep">
+          <Building2 className="size-4 shrink-0 mt-0.5" aria-hidden />
+          <span>
+            This creates your administrator account. Right after verifying it, you'll add your
+            school's details — matched against the national NESA accreditation registry — to go
+            live.
+          </span>
+        </div>
+      )}
 
       <form onSubmit={onSubmit} className="space-y-4" noValidate>
         <div className="grid grid-cols-2 gap-3">
@@ -179,29 +201,27 @@ export default function RegisterPage() {
           error={errors.phone}
           required
         />
-        {!USE_MOCKS && (
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="National ID"
-              placeholder="16-digit NID"
-              inputMode="numeric"
-              maxLength={16}
-              value={form.nationalId}
-              onChange={set("nationalId")}
-              error={errors.nationalId}
-              hint="Verified against the national registry."
-              required
-            />
-            <Input
-              label="Date of birth"
-              type="date"
-              value={form.dateOfBirth}
-              onChange={set("dateOfBirth")}
-              error={errors.dateOfBirth}
-              required
-            />
-          </div>
-        )}
+        <div className="grid grid-cols-2 gap-3">
+          <Input
+            label="National ID"
+            placeholder="16-digit NID"
+            inputMode="numeric"
+            maxLength={16}
+            value={form.nationalId}
+            onChange={set("nationalId")}
+            error={errors.nationalId}
+            hint="Verified against the national registry."
+            required
+          />
+          <Input
+            label="Date of birth"
+            type="date"
+            value={form.dateOfBirth}
+            onChange={set("dateOfBirth")}
+            error={errors.dateOfBirth}
+            required
+          />
+        </div>
         <Input
           label="Password"
           type="password"

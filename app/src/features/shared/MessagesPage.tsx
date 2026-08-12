@@ -12,7 +12,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { commsService } from "@/services/commsService";
 import { fullName, timeAgo, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { USE_MOCKS } from "@/lib/api/client";
 
 /**
  * Shared threaded-messaging screen (parent ⇄ teacher ⇄ school office).
@@ -26,7 +25,7 @@ import { USE_MOCKS } from "@/lib/api/client";
 export default function MessagesPage() {
   const { user, role } = useAuth();
 
-  if (!USE_MOCKS && role === "TEACHER") {
+  if (role === "TEACHER") {
     return (
       <PageTransition>
         <PageHeader title="Messages" description="Direct conversations — every thread stays linked to a student." />

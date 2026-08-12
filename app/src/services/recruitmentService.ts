@@ -4,9 +4,7 @@ import type {
   JobApplicationStage,
   Vacancy,
 } from "@/types";
-import { db, nowIso, simulate, snapshot } from "@/mocks/db";
-import { uid } from "@/lib/utils";
-import { http, USE_MOCKS, type ApiError } from "@/lib/api/client";
+import { http, type ApiError } from "@/lib/api/client";
 
 export interface VacancyFilters {
   q?: string;
@@ -218,18 +216,6 @@ export const recruitmentService = {
   // from the school data the endpoint already includes; positionType/employmentType have no backend field at
   // all, see JobBoardPage, which drops those filter controls entirely).
   async vacancies(filters: VacancyFilters = {}): Promise<Vacancy[]> {
-    if (USE_MOCKS) {
-      let out = [...db.vacancies];
-      if (filters.openOnly !== false) out = out.filter((v) => v.status === "OPEN");
-      if (filters.q) {
-        const q = filters.q.toLowerCase();
-        out = out.filter(
-          (v) => v.title.toLowerCase().includes(q) || v.schoolName.toLowerCase().includes(q) || (v.subject ?? "").toLowerCase().includes(q),
-        );
-      }
-      if (filters.district) out = out.filter((v) => v.district === filters.district);
-      return simulate(snapshot(out.sort((a, b) => b.postedAt.localeCompare(a.postedAt))));
-    }
     const params = new URLSearchParams();
     if (filters.q) params.set("search", filters.q);
     const query = params.toString();
@@ -242,11 +228,6 @@ export const recruitmentService = {
   // GET /jobs — no single-job endpoint exists, so we fetch the public list and find the match client-side
   // (a minor inefficiency, not worth inventing a new backend route for).
   async vacancy(id: string): Promise<Vacancy> {
-    if (USE_MOCKS) {
-      const v = db.vacancies.find((v) => v.id === id);
-      if (!v) throw { code: "NOT_FOUND", message: "Vacancy not found.", status: 404 };
-      return simulate(snapshot(v));
-    }
     const { jobs } = await http.get<{ jobs: BackendJob[] }>("/jobs");
     const job = jobs.find((j) => j.id === id);
     if (!job) throw { code: "NOT_FOUND", message: "Vacancy not found.", status: 404 } satisfies ApiError;
@@ -260,11 +241,6 @@ export const recruitmentService = {
    * track (positionType/employmentType/description/requirements/subject).
    */
   async vacanciesBySchool(schoolId: string): Promise<Vacancy[]> {
-    if (USE_MOCKS) {
-      return simulate(
-        snapshot(db.vacancies.filter((v) => v.schoolId === schoolId).sort((a, b) => b.postedAt.localeCompare(a.postedAt))),
-      );
-    }
     const { jobs } = await http.get<{ jobs: RealSchoolJobRow[] }>(`/jobs/schools/${schoolId}`);
     return jobs.map((j) => ({
       id: j.id, schoolId, schoolName: "", district: "",
@@ -280,19 +256,6 @@ export const recruitmentService = {
   // position-taxonomy/subject/employment-type/salary-range field on the backend — those are
   // dropped from the request in live mode (VacancyPipelinePage/RecruitmentPage adapt their forms).
   async saveVacancy(input: Omit<Vacancy, "id" | "postedAt" | "applicantsCount" | "status"> & { id?: string; status?: Vacancy["status"] }): Promise<Vacancy> {
-    if (USE_MOCKS) {
-      if (input.id) {
-        const v = db.vacancies.find((v) => v.id === input.id);
-        if (!v) throw { code: "NOT_FOUND", message: "Vacancy not found.", status: 404 };
-        Object.assign(v, input);
-        return simulate(snapshot(v));
-      }
-      const vacancy: Vacancy = {
-        ...input, id: uid("vac"), status: input.status ?? "OPEN", postedAt: nowIso(), applicantsCount: 0,
-      };
-      db.vacancies.unshift(vacancy);
-      return simulate(snapshot(vacancy));
-    }
     const body = {
       title: input.title, description: input.description,
       requirements: input.requirements.length ? input.requirements.join("\n") : undefined,
@@ -308,12 +271,6 @@ export const recruitmentService = {
 
   /** Closes a vacancy. PATCH /jobs/schools/:schoolId/:jobId { status: "CLOSED" } */
   async closeVacancy(schoolId: string, id: string): Promise<Vacancy> {
-    if (USE_MOCKS) {
-      const v = db.vacancies.find((v) => v.id === id);
-      if (!v) throw { code: "NOT_FOUND", message: "Vacancy not found.", status: 404 };
-      v.status = "CLOSED";
-      return simulate(snapshot(v));
-    }
     const res = await http.patch<{ job: RealSchoolJobRow }>(`/jobs/schools/${schoolId}/${id}`, { status: "CLOSED" });
     return {
       id: res.job.id, schoolId, schoolName: "", district: "", title: res.job.title,
@@ -325,26 +282,12 @@ export const recruitmentService = {
   // GET /jobs/applications/me — the backend scopes this to the authenticated applicant, so `applicantId`
   // is only used for the mock branch (kept for backward-compatible call sites).
   async applicationsByApplicant(applicantId: string): Promise<JobApplication[]> {
-    if (USE_MOCKS) {
-      return simulate(
-        snapshot(
-          db.jobApplications.filter((a) => a.applicantId === applicantId).sort((a, b) => b.appliedAt.localeCompare(a.appliedAt)),
-        ),
-      );
-    }
     const { applications } = await http.get<{ applications: BackendApplication[] }>("/jobs/applications/me");
     return applications.map(mapApplication);
   },
 
   // GET /jobs/schools/:schoolId/:jobId/applications
   async applicationsByVacancy(schoolId: string, vacancyId: string): Promise<JobApplication[]> {
-    if (USE_MOCKS) {
-      return simulate(
-        snapshot(
-          db.jobApplications.filter((a) => a.vacancyId === vacancyId).sort((a, b) => b.appliedAt.localeCompare(a.appliedAt)),
-        ),
-      );
-    }
     const { applications } = await http.get<{ applications: RealSchoolApplicantRow[] }>(
       `/jobs/schools/${schoolId}/${vacancyId}/applications`,
     );
@@ -361,26 +304,6 @@ export const recruitmentService = {
     /** Real `File` blob for the actual multipart upload — required in live mode, unused in mock mode. */
     cvFile?: File;
   }): Promise<JobApplication> {
-    if (USE_MOCKS) {
-      const vacancy = db.vacancies.find((v) => v.id === input.vacancyId);
-      if (!vacancy) throw { code: "NOT_FOUND", message: "Vacancy not found.", status: 404 };
-      if (vacancy.status !== "OPEN") throw { code: "CLOSED", message: "This vacancy is closed.", status: 409 };
-      if (db.jobApplications.some((a) => a.vacancyId === input.vacancyId && a.applicantId === input.applicantId)) {
-        throw { code: "DUPLICATE", message: "You already applied to this vacancy.", status: 409 };
-      }
-      const profile = db.applicantProfiles.find((p) => p.userId === input.applicantId);
-      const now = nowIso();
-      const application: JobApplication = {
-        id: uid("japp"), vacancyId: vacancy.id, vacancyTitle: vacancy.title, schoolName: vacancy.schoolName,
-        applicantId: input.applicantId, applicantName: input.applicantName,
-        applicantHeadline: profile?.headline ?? "", coverLetter: input.coverLetter,
-        cvFileName: input.cvFileName, stage: "APPLIED", appliedAt: now,
-        timeline: [{ at: now, stage: "APPLIED" }],
-      };
-      db.jobApplications.unshift(application);
-      vacancy.applicantsCount += 1;
-      return simulate(snapshot(application), 700);
-    }
     const form = new FormData();
     if (input.coverLetter) form.set("coverLetter", input.coverLetter);
     if (input.cvFile) form.set("cv", input.cvFile);
@@ -401,7 +324,6 @@ export const recruitmentService = {
     applicationId: string,
     input: { interviewAt: string; interviewLocation: string; message?: string },
   ): Promise<JobApplication> {
-    if (USE_MOCKS) return this.moveStage(applicationId, "SHORTLISTED", input.message);
     const res = await http.patch<{ application: RealSchoolApplicantRow }>(
       `/jobs/schools/${schoolId}/${vacancyId}/applications/${applicationId}/shortlist`,
       input,
@@ -411,7 +333,6 @@ export const recruitmentService = {
 
   /** Rejects an applicant. PATCH /jobs/schools/:schoolId/:jobId/applications/:applicationId/reject */
   async rejectApplicant(schoolId: string, vacancyId: string, applicationId: string, reason?: string): Promise<JobApplication> {
-    if (USE_MOCKS) return this.moveStage(applicationId, "REJECTED", reason);
     const res = await http.patch<{ application: RealSchoolApplicantRow }>(
       `/jobs/schools/${schoolId}/${vacancyId}/applications/${applicationId}/reject`,
       { ...(reason ? { reason } : {}) },
@@ -419,44 +340,14 @@ export const recruitmentService = {
     return mapSchoolApplicant(res.application);
   },
 
-  /** Move an applicant through the pipeline; notifies them. POST /api/v1/job-applications/:id/stage */
-  async moveStage(id: string, stage: JobApplicationStage, note?: string): Promise<JobApplication> {
-    const app = db.jobApplications.find((a) => a.id === id);
-    if (!app) throw { code: "NOT_FOUND", message: "Application not found.", status: 404 };
-    app.stage = stage;
-    app.timeline.push({ at: nowIso(), stage, note });
-    const stageText: Record<JobApplicationStage, string> = {
-      APPLIED: "was received", SHORTLISTED: "was shortlisted", INTERVIEW: "moved to interview",
-      OFFERED: "received an offer", HIRED: "was marked hired — congratulations!", REJECTED: "was not successful this time",
-    };
-    db.notifications.unshift({
-      id: uid("nt"), userId: app.applicantId, type: "RECRUITMENT",
-      title: `Application update — ${app.schoolName}`,
-      body: `Your application for ${app.vacancyTitle} ${stageText[stage]}.`,
-      read: false, createdAt: nowIso(), link: "/applicant/applications",
-    });
-    return simulate(snapshot(app));
-  },
-
   // No backend equivalent (no `ApplicantProfile` model) — see the block comment above. Stored in
   // `localStorage` only; never sent to the server. In mock mode the seeded in-memory profile is used
   // instead so the demo data stays rich.
   async profile(userId: string): Promise<ApplicantProfile> {
-    if (USE_MOCKS) {
-      const p = db.applicantProfiles.find((p) => p.userId === userId);
-      if (!p) throw { code: "NOT_FOUND", message: "Profile not found.", status: 404 };
-      return simulate(snapshot(p));
-    }
     return readLocalProfile(userId);
   },
 
   async updateProfile(userId: string, patch: Partial<ApplicantProfile>): Promise<ApplicantProfile> {
-    if (USE_MOCKS) {
-      const p = db.applicantProfiles.find((p) => p.userId === userId);
-      if (!p) throw { code: "NOT_FOUND", message: "Profile not found.", status: 404 };
-      Object.assign(p, patch, { userId });
-      return simulate(snapshot(p));
-    }
     const merged = { ...readLocalProfile(userId), ...patch, userId };
     writeLocalProfile(merged);
     return merged;

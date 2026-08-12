@@ -13,7 +13,6 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { schoolService } from "@/services/schoolService";
 import { admissionService } from "@/services/admissionService";
-import { USE_MOCKS } from "@/lib/api/client";
 import { toast } from "@/stores/uiStore";
 import { SCHOOL_TYPE_LABEL } from "@/lib/status";
 import { formatNumber, fullName } from "@/lib/format";
@@ -28,12 +27,7 @@ export default function ApplyPage() {
   const [step, setStep] = useState(0);
 
   const { data: school } = useQuery({ queryKey: ["school", schoolId], queryFn: () => schoolService.get(schoolId) });
-  const { data: mockClasses = [] } = useQuery({
-    queryKey: ["school-classes", schoolId],
-    queryFn: () => schoolService.classes(schoolId),
-    enabled: USE_MOCKS,
-  });
-  const classOptions: Array<SchoolClass | PublicSchoolClass> = USE_MOCKS ? mockClasses : (school?.classes ?? []);
+  const classOptions: Array<SchoolClass | PublicSchoolClass> = school?.classes ?? [];
   const openClasses = classOptions.filter((c) => !("isFull" in c) || !c.isFull);
 
   const [child, setChild] = useState({

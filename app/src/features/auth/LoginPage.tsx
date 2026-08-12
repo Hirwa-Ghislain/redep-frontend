@@ -1,5 +1,5 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useState, type FormEvent } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowRight, KeyRound, Mail } from "lucide-react";
 import { AuthLayout } from "@/components/layout/AuthLayout";
 import { Button } from "@/components/ui/Button";
@@ -7,36 +7,15 @@ import { Input } from "@/components/ui/Input";
 import { useAuthStore } from "@/stores/authStore";
 import { primaryRole, PORTAL_HOME } from "@/config/roles";
 import type { ApiError } from "@/lib/api/client";
-import { USE_MOCKS } from "@/lib/api/client";
-
-const DEMO_ACCOUNTS = [
-  { email: "parent@demo.rw", label: "Parent", dot: "bg-primary" },
-  { email: "school@demo.rw", label: "School admin", dot: "bg-gold" },
-  { email: "accountant@demo.rw", label: "School staff · Accountant", dot: "bg-gold" },
-  { email: "teacher@demo.rw", label: "Teacher", dot: "bg-sky" },
-  { email: "applicant@demo.rw", label: "Job applicant", dot: "bg-clay" },
-  { email: "ministry@demo.rw", label: "Education authority", dot: "bg-primary" },
-  { email: "admin@demo.rw", label: "System admin", dot: "bg-ink" },
-];
 
 export default function LoginPage() {
   const login = useAuthStore((s) => s.login);
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  // Demo deep-link: /login?as=parent@demo.rw signs straight into that account (mock mode only).
-  const autoAs = searchParams.get("as");
-  useEffect(() => {
-    if (USE_MOCKS && autoAs && DEMO_ACCOUNTS.some((a) => a.email === autoAs)) {
-      void doLogin(autoAs, "demo123!");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoAs]);
 
   async function doLogin(emailToUse: string, passwordToUse: string) {
     setError(null);
@@ -100,36 +79,13 @@ export default function LoginPage() {
       <p className="text-[13.5px] text-muted mt-6">
         New to E-SHURI?{" "}
         <Link to="/register" className="font-medium text-primary-deep hover:underline">
-          Create a parent or applicant account
+          Create an account
         </Link>
         {" · "}
         <Link to="/school-onboarding" className="font-medium text-primary-deep hover:underline">
           Register a school
         </Link>
       </p>
-
-      {USE_MOCKS && (
-        <div className="mt-7 border-t border-line pt-5">
-          <p className="text-[12px] font-semibold uppercase tracking-wide text-muted mb-2.5">
-            Demo — explore each portal
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {DEMO_ACCOUNTS.map((acc) => (
-              <button
-                key={acc.email}
-                type="button"
-                disabled={loading}
-                onClick={() => void doLogin(acc.email, "demo123!")}
-                className="inline-flex items-center gap-1.5 rounded-full border border-line bg-paper px-3 py-1.5 text-[12.5px] font-medium text-ink hover:border-primary hover:bg-primary-soft/50 hover:text-primary-deep transition-colors disabled:opacity-50"
-              >
-                <span className={`size-1.5 rounded-full ${acc.dot}`} aria-hidden />
-                {acc.label}
-              </button>
-            ))}
-          </div>
-          <p className="text-[11.5px] text-faint mt-2.5">One click signs you in with sample data.</p>
-        </div>
-      )}
     </AuthLayout>
   );
 }

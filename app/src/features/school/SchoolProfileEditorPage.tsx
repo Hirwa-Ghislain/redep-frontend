@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Info, Plus, RefreshCw } from "lucide-react";
+import { Info, Plus, RefreshCw, Save } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { FadeIn, PageTransition } from "@/components/motion";
 import { Can } from "@/components/auth/guards";
@@ -28,6 +28,16 @@ export default function SchoolProfileEditorPage() {
   });
 
   const [achievement, setAchievement] = useState({ title: "", description: "" });
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+
+  const updateProfile = useMutation({
+    mutationFn: () => schoolService.updateProfile(schoolId, { description: descriptionRef.current?.value ?? "" }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["school"] });
+      toast({ title: "Description updated", variant: "success" });
+    },
+    onError: (e) => toast({ title: "Could not update", description: (e as unknown as ApiError).message, variant: "error" }),
+  });
 
   const sync = useMutation({
     mutationFn: () => schoolService.syncNesaProfile(schoolId),
@@ -104,8 +114,24 @@ export default function SchoolProfileEditorPage() {
           <div className="mt-3 space-y-3">
             <Input label="Contact email" value={school.contactEmail} disabled hint="Sourced from NESA — not editable here." />
             <Input label="Contact phone" value={school.contactPhone} disabled hint="Sourced from NESA — not editable here." />
-            <Textarea label="Description" value={school.description} disabled hint="Set only at school-creation time — no edit endpoint exists yet." rows={3} />
           </div>
+        </Card>
+
+        <Card>
+          <CardHeader title="Description" description="Shown on your Discover listing — not sourced from NESA." />
+          <Textarea
+            key={school.description}
+            ref={descriptionRef}
+            defaultValue={school.description}
+            disabled={!canEdit}
+            rows={3}
+            hint={canEdit ? undefined : "Ask an administrator for the \"Edit public profile\" permission to change this."}
+          />
+          <Can permission={P.SCHOOL_PROFILE_EDIT}>
+            <Button size="sm" className="mt-3" icon={<Save className="size-4" />} loading={updateProfile.isPending} onClick={() => updateProfile.mutate()}>
+              Save description
+            </Button>
+          </Can>
         </Card>
 
         <Card>

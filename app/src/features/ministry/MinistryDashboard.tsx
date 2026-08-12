@@ -9,14 +9,11 @@ import { CardSkeleton, Skeleton } from "@/components/ui/Skeleton";
 import { StatCard } from "@/components/ui/StatCard";
 import { BarsChart } from "@/components/charts/BarsChart";
 import { TrendChart } from "@/components/charts/TrendChart";
-import { academicService } from "@/services/academicService";
 import { commsService } from "@/services/commsService";
 import { ministryService } from "@/services/ministryService";
 import { formatCompact, formatDate, formatNumber, percent } from "@/lib/format";
 
 export default function MinistryDashboard() {
-  const { data: term } = useQuery({ queryKey: ["current-term"], queryFn: () => academicService.currentTerm() });
-
   const { data: kpis, isLoading: loadingKpis } = useQuery({
     queryKey: ["ministry-kpis"],
     queryFn: () => ministryService.kpis(),
@@ -70,7 +67,7 @@ export default function MinistryDashboard() {
   return (
     <PageTransition>
       <HeroBanner
-        eyebrow={`National overview${term ? ` · ${term.label}` : ""}`}
+        eyebrow="National overview"
         title="Republic of Rwanda — Education at a glance"
         subtitle="Enrollment, capacity and staffing across every district, updated as schools report."
         stats={

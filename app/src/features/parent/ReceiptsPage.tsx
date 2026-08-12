@@ -10,7 +10,6 @@ import { SearchInput } from "@/components/ui/SearchInput";
 import { LogoMark } from "@/components/layout/Logo";
 import { useAuth } from "@/hooks/useAuth";
 import { paymentService } from "@/services/paymentService";
-import { USE_MOCKS } from "@/lib/api/client";
 import { toast } from "@/stores/uiStore";
 import { formatDateTime, formatRWF } from "@/lib/format";
 import { CHANNEL_LABEL, FEE_CATEGORY_LABEL } from "@/lib/status";
@@ -29,10 +28,6 @@ export default function ReceiptsPage() {
   });
 
   async function downloadReceipt(receipt: Receipt) {
-    if (USE_MOCKS) {
-      toast({ title: "Receipt downloaded", description: `${receipt.reference}.pdf (simulated)`, variant: "success" });
-      return;
-    }
     setDownloading(true);
     try {
       const blob = await paymentService.downloadReceiptBlob(receipt.paymentId);
@@ -128,7 +123,7 @@ export default function ReceiptsPage() {
               </div>
               <p className="flex items-center gap-1.5 text-[11.5px] text-faint mt-4">
                 <ReceiptText className="size-3.5" />
-                Verify anytime at eshuri.rw/verify-receipt with reference {selected.reference}.
+                Keep this receipt — anyone can verify it's genuine at Verify a receipt with reference {selected.reference}.
               </p>
             </div>
           </div>

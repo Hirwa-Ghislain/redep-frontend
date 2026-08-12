@@ -28,6 +28,19 @@ export function RoleRedirect() {
 }
 
 /**
+ * Guards the School portal: a self-registered SCHOOL_ADMIN has an account but no `schoolId`
+ * until they complete their school's profile (`POST /schools`) — send them there first instead
+ * of letting every school-scoped page 404/crash on a missing school.
+ */
+export function RequireSchool() {
+  const { user } = useAuth();
+  if (user && !user.schoolId) {
+    return <Navigate to="/school-onboarding" replace />;
+  }
+  return <Outlet />;
+}
+
+/**
  * Permission gate for UI fragments. Renders `fallback` (default: nothing)
  * when the user lacks the permission. UI-gating only — the backend re-checks.
  */

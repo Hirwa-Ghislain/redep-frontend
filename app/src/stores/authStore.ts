@@ -13,6 +13,9 @@ interface AuthState {
   register: (input: Parameters<typeof authService.register>[0]) => Promise<User | PendingVerification>;
   verifyAccount: (input: { verificationMethod: VerificationMethod; identifier: string; otp: string }) => Promise<User>;
   setActiveRole: (role: RoleKey) => void;
+  /** Refetches the current user from the backend and merges it into the session (e.g. after a
+   *  SCHOOL_ADMIN creates their school and picks up a `schoolId` the original login didn't have). */
+  refreshUser: () => Promise<void>;
   logout: () => void;
 }
 
@@ -50,6 +53,12 @@ export const useAuthStore = create<AuthState>()(
         if (session?.user.roles.includes(role)) set({ activeRole: role });
       },
 
+      async refreshUser() {
+        const user = await authService.me();
+        const { session } = get();
+        if (session) set({ session: { ...session, user } });
+      },
+
       logout() {
         const hadSession = useAuthStore.getState().session !== null;
         set({ session: null, activeRole: null });
@@ -60,7 +69,7 @@ export const useAuthStore = create<AuthState>()(
   ),
 );
 
-// Wire the HTTP client to this store (used when VITE_USE_MOCKS=false).
+// Wire the HTTP client to this store.
 configureApiAuth({
   getAccessToken: () => useAuthStore.getState().session?.accessToken ?? null,
   onTokenRefreshed: (accessToken) => {

@@ -1,5 +1,4 @@
-import { http, USE_MOCKS } from "@/lib/api/client";
-import { simulate } from "@/mocks/db";
+import { http } from "@/lib/api/client";
 
 export type LanguageCode = "EN" | "RW" | "FR";
 
@@ -19,14 +18,12 @@ const LANGUAGES: LanguageOption[] = [
 export const i18nService = {
   // GET /api/v1/i18n/languages
   async getLanguages(): Promise<LanguageOption[]> {
-    if (USE_MOCKS) return simulate(LANGUAGES, 120);
     const res = await http.get<{ languages: LanguageOption[] }>("/i18n/languages");
     return res.languages;
   },
 
   // GET /api/v1/i18n/translations — language is negotiated via the Accept-Language header.
   async getTranslations(): Promise<Record<string, string>> {
-    if (USE_MOCKS) return simulate({}, 120);
     const res = await http.get<{ translations: Record<string, string> }>("/i18n/translations");
     return res.translations;
   },

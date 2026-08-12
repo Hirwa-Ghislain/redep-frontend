@@ -16,7 +16,7 @@ import { Timeline } from "@/components/ui/Timeline";
 import { useAuth } from "@/hooks/useAuth";
 import { recruitmentService } from "@/services/recruitmentService";
 import { schoolService } from "@/services/schoolService";
-import { USE_MOCKS, type ApiError } from "@/lib/api/client";
+import type { ApiError } from "@/lib/api/client";
 import { formatDate, formatDateTime, formatNumber, formatRWF, fullName } from "@/lib/format";
 import { toast } from "@/stores/uiStore";
 import { JOB_STAGE, SCHOOL_TYPE_LABEL } from "@/lib/status";
@@ -58,12 +58,6 @@ export default function VacancyDetailPage() {
     queryFn: () => recruitmentService.applicationsByApplicant(user!.id),
     enabled: Boolean(user),
   });
-  const { data: profile } = useQuery({
-    queryKey: ["applicant-profile", user?.id],
-    queryFn: () => recruitmentService.profile(user!.id),
-    enabled: Boolean(user),
-  });
-
   const existing = applications.find((a) => a.vacancyId === vacancyId);
 
   const apply = useMutation({
@@ -96,13 +90,6 @@ export default function VacancyDetailPage() {
   });
 
   const openApply = () => {
-    // The CV-builder profile is a purely local convenience (the backend has no profile store), so a
-    // prefilled file name only carries real bytes in mock mode — in live mode the applicant must pick
-    // the actual file so it can be uploaded.
-    if (USE_MOCKS && cvFiles.length === 0) {
-      const cvDoc = profile?.documents.find((d) => d.type === "CV");
-      if (cvDoc) setCvFiles([cvDoc.fileName]);
-    }
     setErrors({});
     setCvFile(null);
     setApplyOpen(true);
@@ -114,7 +101,7 @@ export default function VacancyDetailPage() {
       next.coverLetter = `Write at least ${MIN_COVER_LETTER} characters — tell the school why you fit this role.`;
     }
     if (cvFiles.length === 0) next.cv = "Attach your CV to apply.";
-    else if (!USE_MOCKS && !cvFile) next.cv = "Select your CV file again so it can be uploaded.";
+    else if (!cvFile) next.cv = "Select your CV file again so it can be uploaded.";
     setErrors(next);
     if (Object.keys(next).length === 0) apply.mutate();
   };
@@ -304,11 +291,7 @@ export default function VacancyDetailPage() {
               onFilesChange={(picked) => setCvFile(picked[0] ?? null)}
               multiple={false}
               accept=".pdf,.doc,.docx"
-              hint={
-                USE_MOCKS
-                  ? "One file — we prefilled the CV from your profile if you have one."
-                  : "One file — PDF or Word document."
-              }
+              hint="One file — PDF or Word document."
             />
             {errors.cv && (
               <p className="text-[12.5px] text-clay-deep mt-1.5" role="alert">{errors.cv}</p>

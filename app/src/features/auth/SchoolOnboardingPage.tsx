@@ -1,17 +1,15 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Building2, CheckCircle2, LogIn, ShieldAlert, X } from "lucide-react";
+import { CheckCircle2, LogIn, ShieldAlert, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { AuthLayout } from "@/components/layout/AuthLayout";
 import { Button } from "@/components/ui/Button";
 import { Input, Select, Textarea } from "@/components/ui/Input";
-import { authService } from "@/services/authService";
 import { schoolService, type NesaLocationOption } from "@/services/schoolService";
 import { useAuth } from "@/hooks/useAuth";
-import { USE_MOCKS } from "@/lib/api/client";
+import { useAuthStore } from "@/stores/authStore";
 import { PORTAL_HOME } from "@/config/roles";
 import type { ApiError } from "@/lib/api/client";
-import type { SchoolType } from "@/types";
 
 const ASIDE = (
   <>
@@ -35,102 +33,7 @@ const ASIDE = (
 );
 
 export default function SchoolOnboardingPage() {
-  return USE_MOCKS ? <MockOnboardingRequest /> : <LiveSchoolCreation />;
-}
-
-/** Unchanged mock-mode flow: a public "request onboarding" form the E-SHURI team reviews. */
-function MockOnboardingRequest() {
-  const { data: districts = [] } = useQuery({ queryKey: ["districts"], queryFn: () => schoolService.districts() });
-  const [form, setForm] = useState({
-    schoolName: "", type: "PRIVATE" as SchoolType, district: "", sector: "",
-    contactName: "", contactEmail: "", contactPhone: "", message: "",
-  });
-  const [done, setDone] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  const onSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    await authService.requestSchoolOnboarding(form);
-    setLoading(false);
-    setDone(true);
-  };
-
-  return (
-    <AuthLayout
-      aside={
-        <>
-          {ASIDE}
-          <div className="mt-6 rounded-xl bg-white/[0.07] border border-white/10 px-3.5 py-3">
-            <p className="text-[11px] font-bold uppercase tracking-wide text-gold">Verification</p>
-            <p className="mt-1 text-[12px] leading-relaxed text-white/60">
-              The E-SHURI team reviews your documents and activates your school —
-              usually within 3 working days.
-            </p>
-          </div>
-        </>
-      }
-    >
-      {done ? (
-        <div className="text-center py-8">
-          <span className="inline-flex size-14 items-center justify-center rounded-full bg-primary-soft text-primary-deep mb-4">
-            <Building2 className="size-7" />
-          </span>
-          <h1 className="font-display text-[22px] font-bold text-ink">Request received</h1>
-          <p className="text-muted text-[14px] mt-2 max-w-sm mx-auto">
-            The E-SHURI team will verify your school's documents and contact{" "}
-            <span className="font-medium text-ink">{form.contactEmail}</span> with the next steps —
-            usually within 3 working days.
-          </p>
-          <Link to="/login" className="inline-block mt-6 text-[14px] font-medium text-primary-deep hover:underline">
-            Back to sign in
-          </Link>
-        </div>
-      ) : (
-        <>
-          <h1 className="font-display text-[26px] font-bold text-ink">Register your school</h1>
-          <p className="text-muted text-[14px] mt-1 mb-6">
-            Tell us about your school. After verification, you'll receive a school administrator account.
-          </p>
-          <form onSubmit={onSubmit} className="space-y-4">
-            <Input label="School name" value={form.schoolName} onChange={(e) => setForm((f) => ({ ...f, schoolName: e.target.value }))} required />
-            <div className="grid grid-cols-2 gap-3">
-              <Select label="Type" value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as SchoolType }))}>
-                <option value="PUBLIC">Public</option>
-                <option value="PRIVATE">Private</option>
-                <option value="GOVERNMENT_AIDED">Government-aided</option>
-              </Select>
-              <Select label="District" value={form.district} onChange={(e) => setForm((f) => ({ ...f, district: e.target.value }))} required>
-                <option value="" disabled>Select…</option>
-                {districts.map((d) => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </Select>
-            </div>
-            <Input label="Sector" value={form.sector} onChange={(e) => setForm((f) => ({ ...f, sector: e.target.value }))} required />
-            <div className="grid grid-cols-2 gap-3">
-              <Input label="Contact person" value={form.contactName} onChange={(e) => setForm((f) => ({ ...f, contactName: e.target.value }))} required />
-              <Input label="Contact phone" type="tel" value={form.contactPhone} onChange={(e) => setForm((f) => ({ ...f, contactPhone: e.target.value }))} required />
-            </div>
-            <Input label="Contact email" type="email" value={form.contactEmail} onChange={(e) => setForm((f) => ({ ...f, contactEmail: e.target.value }))} required />
-            <Textarea
-              label="Anything we should know?"
-              placeholder="Levels offered, capacity, opening date…"
-              value={form.message}
-              onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
-            />
-            <Button type="submit" size="lg" loading={loading} className="w-full">
-              Submit request
-            </Button>
-          </form>
-          <p className="text-[13.5px] text-muted mt-6">
-            Already onboarded?{" "}
-            <Link to="/login" className="font-medium text-primary-deep hover:underline">Sign in</Link>
-          </p>
-        </>
-      )}
-    </AuthLayout>
-  );
+  return <LiveSchoolCreation />;
 }
 
 interface AchievementDraft {
@@ -139,15 +42,14 @@ interface AchievementDraft {
 }
 
 /**
- * Live mode. There's no "request → E-SHURI reviews → activates" queue in the real backend —
+ * There's no "request → E-SHURI reviews → activates" queue in the real backend —
  * a SCHOOL_ADMIN creates their (already NESA-accredited) school directly via `POST /schools`
  * and it goes live immediately, matched against the national NESA registry by exact name +
  * province/district/sector/cell/village.
  *
- * Self-serve registration in this app only offers Parent / Job applicant accounts (see
- * RegisterPage) even though the backend's own `role` enum technically allows `SCHOOL_ADMIN` —
- * so a school administrator account has to already exist. This page is for an already
- * authenticated SCHOOL_ADMIN to complete their school's real profile.
+ * Registering the SCHOOL_ADMIN account itself happens on RegisterPage (`/register` — the
+ * backend's `role` enum accepts SCHOOL_ADMIN there too); this page is step two, for an
+ * authenticated SCHOOL_ADMIN with no school yet to complete their school's real profile.
  */
 function LiveSchoolCreation() {
   const { role, isAuthenticated } = useAuth();
@@ -161,14 +63,18 @@ function LiveSchoolCreation() {
         </span>
         <h1 className="font-display text-[22px] font-bold text-ink">Sign in as a school administrator</h1>
         <p className="text-muted text-[14px] mt-2 max-w-sm">
-          Creating a school on E-SHURI requires an existing School Administrator account. Self-serve
-          registration on this site currently covers parents and job applicants only — school
-          administrator accounts are provisioned separately by the E-SHURI team. If you already have
-          one, sign in below to complete your school's profile.
+          Creating a school on E-SHURI requires a School Administrator account. If you already have
+          one, sign in below to complete your school's profile — otherwise register a new
+          administrator account first.
         </p>
-        <Link to="/login" className="inline-block mt-6 text-[14px] font-medium text-primary-deep hover:underline">
-          Sign in →
-        </Link>
+        <div className="flex items-center gap-4 mt-6">
+          <Link to="/login" className="text-[14px] font-medium text-primary-deep hover:underline">
+            Sign in →
+          </Link>
+          <Link to="/register" className="text-[14px] font-medium text-primary-deep hover:underline">
+            Register an account →
+          </Link>
+        </div>
       </AuthLayout>
     );
   }
@@ -270,6 +176,9 @@ function CreateSchoolForm({ onCreated }: { onCreated: () => void }) {
       for (const file of achievementProofs) formData.append("achievementProofs", file);
 
       await schoolService.createSchool(formData);
+      // The backend assigns `schoolId` to the account server-side on school creation — refetch
+      // the session so every school-scoped page (and the RequireSchool guard) sees it.
+      await useAuthStore.getState().refreshUser();
       onCreated();
     } catch (err) {
       setError((err as ApiError).message ?? "Couldn't create the school. Check the details match NESA's records exactly.");

@@ -1,7 +1,7 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { PortalShell } from "@/components/layout/PortalShell";
-import { ProtectedRoute, RoleRedirect } from "@/components/auth/guards";
+import { ProtectedRoute, RequireSchool, RoleRedirect } from "@/components/auth/guards";
 import { ADMIN_NAV, APPLICANT_NAV, MINISTRY_NAV, PARENT_NAV, SCHOOL_NAV, TEACHER_NAV } from "@/config/nav";
 import { LogoMark } from "@/components/layout/Logo";
 
@@ -133,24 +133,26 @@ export function AppRouter() {
 
         {/* School portal (admin + custom staff roles) */}
         <Route element={<ProtectedRoute allow={["SCHOOL_ADMIN", "SCHOOL_STAFF"]} />}>
-          <Route element={<PortalShell nav={SCHOOL_NAV} portalLabel="School portal" />}>
-            <Route path="/school" element={<SchoolDashboard />} />
-            <Route path="/school/admissions" element={<AdmissionsPage />} />
-            <Route path="/school/students" element={<StudentsPage />} />
-            <Route path="/school/classes" element={<ClassesPage />} />
-            <Route path="/school/fees" element={<FeesPage />} />
-            <Route path="/school/payments" element={<PaymentsLedgerPage />} />
-            <Route path="/school/accounting" element={<AccountingPage />} />
-            <Route path="/school/announcements" element={<SchoolAnnouncementsPage />} />
-            <Route path="/school/messages" element={<MessagesPage />} />
-            <Route path="/school/teachers" element={<TeachersPage />} />
-            <Route path="/school/staff" element={<StaffRolesPage />} />
-            <Route path="/school/recruitment" element={<RecruitmentPage />} />
-            <Route path="/school/recruitment/:vacancyId" element={<VacancyPipelinePage />} />
-            <Route path="/school/transfers" element={<SchoolTransfersPage />} />
-            <Route path="/school/incidents" element={<SchoolIncidentsPage />} />
-            <Route path="/school/profile" element={<SchoolProfileEditorPage />} />
-            <Route path="/school/settings" element={<SchoolSettingsPage />} />
+          <Route element={<RequireSchool />}>
+            <Route element={<PortalShell nav={SCHOOL_NAV} portalLabel="School portal" />}>
+              <Route path="/school" element={<SchoolDashboard />} />
+              <Route path="/school/admissions" element={<AdmissionsPage />} />
+              <Route path="/school/students" element={<StudentsPage />} />
+              <Route path="/school/classes" element={<ClassesPage />} />
+              <Route path="/school/fees" element={<FeesPage />} />
+              <Route path="/school/payments" element={<PaymentsLedgerPage />} />
+              <Route path="/school/accounting" element={<AccountingPage />} />
+              <Route path="/school/announcements" element={<SchoolAnnouncementsPage />} />
+              <Route path="/school/messages" element={<MessagesPage />} />
+              <Route path="/school/teachers" element={<TeachersPage />} />
+              <Route path="/school/staff" element={<StaffRolesPage />} />
+              <Route path="/school/recruitment" element={<RecruitmentPage />} />
+              <Route path="/school/recruitment/:vacancyId" element={<VacancyPipelinePage />} />
+              <Route path="/school/transfers" element={<SchoolTransfersPage />} />
+              <Route path="/school/incidents" element={<SchoolIncidentsPage />} />
+              <Route path="/school/profile" element={<SchoolProfileEditorPage />} />
+              <Route path="/school/settings" element={<SchoolSettingsPage />} />
+            </Route>
           </Route>
         </Route>
 

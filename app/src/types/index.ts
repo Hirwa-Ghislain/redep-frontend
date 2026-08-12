@@ -149,21 +149,6 @@ export interface AdminSchoolRecord {
   administrator: { firstName: string; lastName: string; email: string } | null;
 }
 
-export interface SchoolOnboardingRequest {
-  id: ID;
-  schoolName: string;
-  type: SchoolType;
-  district: string;
-  sector: string;
-  contactName: string;
-  contactEmail: string;
-  contactPhone: string;
-  message?: string;
-  status: "PENDING" | "VERIFYING" | "APPROVED" | "REJECTED";
-  submittedAt: string;
-  documents: DocumentRef[];
-}
-
 /* -------------------------------- students --------------------------------- */
 
 export type Gender = "M" | "F";
@@ -376,13 +361,13 @@ export interface Message {
 }
 
 export type NotificationType =
+  | "ACCOUNT"
   | "ADMISSION"
   | "PAYMENT"
-  | "MESSAGE"
-  | "ANNOUNCEMENT"
-  | "RECRUITMENT"
-  | "TRANSFER"
-  | "SYSTEM";
+  | "ATTENDANCE"
+  | "SCHOOL_COMMUNICATION"
+  | "JOB"
+  | "INCIDENT";
 
 export interface AppNotification {
   id: ID;
@@ -600,8 +585,6 @@ export interface EnrollmentTrendPoint {
 export interface NationalKpis {
   totalSchools: number;
   activeSchools: number;
-  /** No "pending school" status in the real backend (only ACTIVE/SUSPENDED) — mock-mode only. */
-  pendingSchools?: number;
   totalStudents: number;
   totalTeachers: number;
   /** No national parent-count metric exposed by the real backend — mock-mode only. */
@@ -773,15 +756,4 @@ export interface IncidentReportInput {
   location?: string;
   occurredAt?: string;
   immediateDanger?: boolean;
-}
-
-/* --------------------------------- surveys --------------------------------- */
-
-export interface SatisfactionSurvey {
-  id: ID;
-  schoolId: ID;
-  parentId: ID;
-  score: number; // 1..5
-  comment?: string;
-  submittedAt: string;
 }

@@ -209,13 +209,13 @@ function NotificationsBell() {
 
   const { data: notifications = [] } = useQuery({
     queryKey: ["notifications", user?.id],
-    queryFn: () => commsService.notifications(user!.id),
+    queryFn: () => commsService.notifications(),
     enabled: Boolean(user),
     refetchInterval: 30_000,
   });
 
   const markAll = useMutation({
-    mutationFn: () => commsService.markNotificationsRead(user!.id),
+    mutationFn: () => commsService.markNotificationsRead(),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications", user?.id] }),
   });
 
@@ -273,7 +273,7 @@ function NotificationsBell() {
                     key={n.id}
                     onClick={() => {
                       setOpen(false);
-                      void commsService.markNotificationsRead(user!.id, [n.id]).then(() =>
+                      void commsService.markNotificationsRead([n.id]).then(() =>
                         qc.invalidateQueries({ queryKey: ["notifications", user?.id] }),
                       );
                       if (n.link) navigate(n.link);

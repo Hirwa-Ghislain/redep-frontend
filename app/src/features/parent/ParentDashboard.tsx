@@ -18,12 +18,9 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
 import { CardSkeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/hooks/useAuth";
-import { academicService } from "@/services/academicService";
 import { admissionService } from "@/services/admissionService";
 import { commsService } from "@/services/commsService";
-import { feeService } from "@/services/feeService";
 import { studentService } from "@/services/studentService";
-import { USE_MOCKS } from "@/lib/api/client";
 import { formatDate, formatRWF, fullName } from "@/lib/format";
 import { ADMISSION_STATUS, BACKEND_APPLICATION_STATUS } from "@/lib/status";
 
@@ -37,22 +34,15 @@ export default function ParentDashboard() {
     enabled: Boolean(user),
   });
 
-  // The real backend has no academic-term concept — this only applies in mock mode.
-  const { data: term } = useQuery({ queryKey: ["current-term"], queryFn: () => academicService.currentTerm(), enabled: USE_MOCKS });
-
   const enrolled = children.filter((c) => c.status === "ENROLLED");
 
   const { data: totalDue } = useQuery({
-    queryKey: ["parent-due", user?.id, term?.id, enrolled.length],
+    queryKey: ["parent-due", user?.id, enrolled.length],
     queryFn: async () => {
-      if (USE_MOCKS) {
-        const all = await Promise.all(enrolled.map((c) => feeService.balances(c.id, term!.id)));
-        return all.flat().reduce((sum, b) => sum + b.due, 0);
-      }
       const withBalances = await Promise.all(enrolled.map((c) => studentService.get(c.id)));
       return withBalances.reduce((sum, c) => sum + (c.outstandingBalance ?? 0), 0);
     },
-    enabled: USE_MOCKS ? Boolean(term) && enrolled.length > 0 : enrolled.length > 0,
+    enabled: enrolled.length > 0,
   });
 
   const { data: applications = [] } = useQuery({
@@ -80,7 +70,6 @@ export default function ParentDashboard() {
   return (
     <PageTransition>
       <HeroBanner
-        eyebrow={term?.label}
         title={`Muraho, ${user?.firstName} 👋`}
         subtitle="Here's what's happening across your children's schools."
         stats={[
@@ -102,7 +91,7 @@ export default function ParentDashboard() {
         </StaggerItem>
         <StaggerItem>
           <StatCard
-            label={`Outstanding fees${term ? ` — ${term.label}` : ""}`}
+            label="Outstanding fees"
             value={totalDue !== undefined ? formatRWF(totalDue) : "…"}
             icon={Wallet}
             tone={totalDue ? "clay" : "primary"}

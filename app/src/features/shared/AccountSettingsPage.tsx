@@ -11,7 +11,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { authService } from "@/services/authService";
 import { toast } from "@/stores/uiStore";
 import { ROLE_LABELS } from "@/config/roles";
-import { USE_MOCKS, type ApiError } from "@/lib/api/client";
+import type { ApiError } from "@/lib/api/client";
 
 /** Generic account settings shared by parent / teacher / ministry / applicant portals. */
 export default function AccountSettingsPage() {
@@ -28,24 +28,20 @@ export default function AccountSettingsPage() {
   if (!user) return null;
 
   const saveProfile = async () => {
-    if (!USE_MOCKS) {
-      setSavingProfile(true);
-      try {
-        const updated = await authService.updateProfile({
-          firstName: profile.firstName.trim(),
-          lastName: profile.lastName.trim(),
-        });
-        const session = useAuthStore.getState().session;
-        if (session) useAuthStore.setState({ session: { ...session, user: updated } });
-        toast({ title: "Profile saved", variant: "success" });
-      } catch (err) {
-        toast({ title: "Couldn't save profile", description: (err as ApiError).message, variant: "error" });
-      } finally {
-        setSavingProfile(false);
-      }
-      return;
+    setSavingProfile(true);
+    try {
+      const updated = await authService.updateProfile({
+        firstName: profile.firstName.trim(),
+        lastName: profile.lastName.trim(),
+      });
+      const session = useAuthStore.getState().session;
+      if (session) useAuthStore.setState({ session: { ...session, user: updated } });
+      toast({ title: "Profile saved", variant: "success" });
+    } catch (err) {
+      toast({ title: "Couldn't save profile", description: (err as ApiError).message, variant: "error" });
+    } finally {
+      setSavingProfile(false);
     }
-    toast({ title: "Profile saved", variant: "success" });
   };
 
   return (
@@ -64,8 +60,8 @@ export default function AccountSettingsPage() {
               label="Phone"
               value={profile.phone}
               onChange={(e) => setProfile((p) => ({ ...p, phone: e.target.value }))}
-              disabled={!USE_MOCKS}
-              hint={!USE_MOCKS ? "Not editable yet — contact support to update your phone number." : undefined}
+              disabled
+              hint="Not editable yet — contact support to update your phone number."
             />
             <div className="flex items-center gap-2">
               <Badge variant="info">{user.staffRoleName ?? (role ? ROLE_LABELS[role] : "")}</Badge>
@@ -108,18 +104,16 @@ export default function AccountSettingsPage() {
           <Card>
             <CardHeader
               title="Security"
-              description={USE_MOCKS ? "Change your password." : "Not editable yet from here."}
+              description="Not editable yet from here."
             />
             <div className="space-y-3.5">
-              {!USE_MOCKS && (
-                <p className="text-[12.5px] text-muted -mt-1">
-                  In-app password change isn't available yet. Use{" "}
-                  <a href="/forgot-password" className="font-medium text-primary-deep hover:underline">
-                    Forgot password
-                  </a>{" "}
-                  to reset it instead.
-                </p>
-              )}
+              <p className="text-[12.5px] text-muted -mt-1">
+                In-app password change isn't available yet. Use{" "}
+                <a href="/forgot-password" className="font-medium text-primary-deep hover:underline">
+                  Forgot password
+                </a>{" "}
+                to reset it instead.
+              </p>
               <Input
                 label="Current password"
                 type="password"
@@ -127,7 +121,7 @@ export default function AccountSettingsPage() {
                 icon={<KeyRound />}
                 value={passwords.current}
                 onChange={(e) => setPasswords((p) => ({ ...p, current: e.target.value }))}
-                disabled={!USE_MOCKS}
+                disabled
               />
               <Input
                 label="New password"
@@ -136,7 +130,7 @@ export default function AccountSettingsPage() {
                 hint="At least 8 characters."
                 value={passwords.next}
                 onChange={(e) => setPasswords((p) => ({ ...p, next: e.target.value }))}
-                disabled={!USE_MOCKS}
+                disabled
               />
               <Button
                 variant="secondary"
@@ -144,7 +138,7 @@ export default function AccountSettingsPage() {
                   setPasswords({ current: "", next: "" });
                   toast({ title: "Password updated", variant: "success" });
                 }}
-                disabled={!USE_MOCKS || passwords.next.length < 8 || !passwords.current}
+                disabled
               >
                 Update password
               </Button>

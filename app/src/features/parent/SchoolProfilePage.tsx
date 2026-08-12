@@ -9,12 +9,9 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { DataTable } from "@/components/ui/DataTable";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { academicService } from "@/services/academicService";
-import { feeService } from "@/services/feeService";
 import { schoolService } from "@/services/schoolService";
-import { USE_MOCKS } from "@/lib/api/client";
 import { formatNumber, formatRWF } from "@/lib/format";
-import { FEE_CATEGORY_LABEL, LEVEL_LABEL, SCHOOL_TYPE_LABEL } from "@/lib/status";
+import { FEE_CATEGORY_LABEL, SCHOOL_TYPE_LABEL } from "@/lib/status";
 import type { FeeStructure, PublicSchoolClass, SchoolClass } from "@/types";
 
 type ClassRow = SchoolClass | PublicSchoolClass;
@@ -27,27 +24,13 @@ export default function SchoolProfilePage() {
     queryKey: ["school", schoolId],
     queryFn: () => schoolService.get(schoolId),
   });
-  // Mock mode: classes come from the dedicated (school-admin) endpoint. Real mode: the public
-  // school profile already embeds live class/seat availability — see `school.classes`.
-  const { data: mockClasses = [] } = useQuery({
-    queryKey: ["school-classes", schoolId],
-    queryFn: () => schoolService.classes(schoolId),
-    enabled: USE_MOCKS,
-  });
-  const classes: ClassRow[] = USE_MOCKS ? mockClasses : (school?.classes ?? []);
+  // The public school profile already embeds live class/seat availability — see `school.classes`.
+  const classes: ClassRow[] = school?.classes ?? [];
 
-  // Real backend fees have no academic-term concept — the term query/label only applies to mocks.
-  const { data: term } = useQuery({ queryKey: ["current-term"], queryFn: () => academicService.currentTerm(), enabled: USE_MOCKS });
-  const { data: mockFees = [] } = useQuery({
-    queryKey: ["school-fees", schoolId, term?.id],
-    queryFn: () => feeService.structures(schoolId, term!.id),
-    enabled: USE_MOCKS && Boolean(term),
-  });
-  const fees: FeeStructure[] = USE_MOCKS
-    ? mockFees
-    : (school?.feeSummaries ?? []).map((f) => ({
-        id: f.id, schoolId, name: f.name, category: f.type, amount: f.amount, termId: "", optional: false,
-      }));
+  // The real backend has no academic-term concept for fees — just its flat fee summaries.
+  const fees: FeeStructure[] = (school?.feeSummaries ?? []).map((f) => ({
+    id: f.id, schoolId, name: f.name, category: f.type, amount: f.amount, termId: "", optional: false,
+  }));
 
   if (isLoading || !school) {
     return (
@@ -157,14 +140,11 @@ export default function SchoolProfilePage() {
 
           <FadeIn delay={0.1}>
             <Card padded={false}>
-              <CardHeader className="px-5 pt-5" title={USE_MOCKS ? `Fees — ${term?.label ?? "current term"}` : "Fees"} />
+              <CardHeader className="px-5 pt-5" title="Fees" />
               <DataTable<FeeStructure>
                 columns={[
                   { key: "name", header: "Fee" },
                   { key: "category", header: "Category", render: (f) => FEE_CATEGORY_LABEL[f.category] },
-                  ...(USE_MOCKS
-                    ? [{ key: "level", header: "Applies to", render: (f: FeeStructure) => (f.level ? LEVEL_LABEL[f.level] : "All levels") }]
-                    : []),
                   { key: "amount", header: "Amount", align: "right", render: (f) => <span className="tnum font-semibold">{formatRWF(f.amount)}</span> },
                 ]}
                 rows={fees}

@@ -1,20 +1,18 @@
 /**
- * HTTP client for the E-SHURI backend (Express 5 + Prisma).
- *
- * All service modules route through here when `VITE_USE_MOCKS=false`.
+ * HTTP client for the E-SHURI backend (Express 5 + Prisma). Every service module routes
+ * through here.
  * Contract (see E-SHURI-backend README + swagger):
  *   - Auth: `Authorization: Bearer <accessToken>` for the short-lived access token.
  *     The refresh token lives in an httpOnly cookie set by the server — the browser
  *     sends it automatically on same-site requests, so `credentials: "include"` is
  *     required and the client never reads/stores it itself.
  *   - Envelope: `{ success: true, message?, data }` on success,
- *     `{ success: false, code, message, details? }` (via AppError) on failure.
+ *     `{ success: false, error: { code, message, details? }, requestId }` on failure.
  *   - Multipart bodies (`FormData`) are passed through as-is (no JSON stringify,
  *     no Content-Type header — the browser sets the multipart boundary).
  */
 
 export const API_URL: string = import.meta.env.VITE_API_URL ?? "http://localhost:4000/api/v1";
-export const USE_MOCKS: boolean = (import.meta.env.VITE_USE_MOCKS ?? "false") === "true";
 
 export interface ApiError {
   code: string;
@@ -47,28 +45,37 @@ export function configureApiLanguage(getLanguage: () => string) {
   languageProvider = getLanguage;
 }
 
-interface BackendEnvelope<T> {
-  success: boolean;
+interface BackendSuccessEnvelope<T> {
+  success: true;
   message?: string;
   data?: T;
-  code?: string;
-  details?: { fieldErrors?: Record<string, string> } | Record<string, string>;
+}
+
+interface BackendErrorEnvelope {
+  success: false;
+  error: { code: string; message: string; details?: unknown };
+  requestId: string;
 }
 
 async function parseError(res: Response): Promise<ApiError> {
-  let body: Partial<BackendEnvelope<unknown>> = {};
+  let body: Partial<BackendErrorEnvelope> = {};
   try {
     body = await res.json();
   } catch {
     /* non-JSON error body */
   }
+  const details = body.error?.details;
   const fieldErrors =
-    body.details && typeof body.details === "object" && "fieldErrors" in body.details
-      ? (body.details as { fieldErrors?: Record<string, string> }).fieldErrors
+    Array.isArray(details)
+      ? Object.fromEntries(
+          details
+            .filter((d): d is { field: string; message: string } => typeof d?.field === "string" && typeof d?.message === "string")
+            .map((d) => [d.field, d.message]),
+        )
       : undefined;
   return {
-    code: body.code ?? "UNKNOWN",
-    message: body.message ?? `Request failed (${res.status})`,
+    code: body.error?.code ?? "UNKNOWN",
+    message: body.error?.message ?? `Request failed (${res.status})`,
     fieldErrors,
     status: res.status,
   };
@@ -81,7 +88,7 @@ async function refreshAccessToken(): Promise<string | null> {
     try {
       const res = await fetch(`${API_URL}/auth/refresh`, { method: "POST", credentials: "include" });
       if (!res.ok) return null;
-      const body = (await res.json()) as BackendEnvelope<{ accessToken: string }>;
+      const body = (await res.json()) as BackendSuccessEnvelope<{ accessToken: string }>;
       const accessToken = body.data?.accessToken;
       if (!accessToken) return null;
       onTokenRefreshed(accessToken);
@@ -117,7 +124,7 @@ async function request<T>(path: string, init: RequestInit = {}, retried = false)
   if (!res.ok) throw await parseError(res);
 
   if (res.status === 204) return undefined as T;
-  const envelope = (await res.json()) as BackendEnvelope<T>;
+  const envelope = (await res.json()) as BackendSuccessEnvelope<T>;
   return envelope.data as T;
 }
 

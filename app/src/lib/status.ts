@@ -74,13 +74,6 @@ export const STAFF_STATUS: Record<"ACTIVE" | "INVITED" | "SUSPENDED", StatusMeta
   SUSPENDED: { label: "Suspended", variant: "danger" },
 };
 
-export const ONBOARDING_STATUS: Record<"PENDING" | "VERIFYING" | "APPROVED" | "REJECTED", StatusMeta> = {
-  PENDING: { label: "Pending", variant: "warning" },
-  VERIFYING: { label: "Verifying", variant: "info" },
-  APPROVED: { label: "Approved", variant: "success" },
-  REJECTED: { label: "Rejected", variant: "danger" },
-};
-
 export const DOC_STATUS: Record<"PENDING" | "VERIFIED" | "REJECTED", StatusMeta> = {
   PENDING: { label: "Pending", variant: "neutral" },
   VERIFIED: { label: "Verified", variant: "success" },
