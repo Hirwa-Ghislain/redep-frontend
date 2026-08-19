@@ -64,7 +64,7 @@ jobs:
       - name: Bump pinned image tags
         working-directory: infra-repo
         run: |
-          sed -i -E 's/^(\s*tag:\s*")[0-9a-f]{40}("\s*#.*)?$/\1${{ github.sha }}\2/' \
+          sed -i -E 's/^(\s*tag:\s*")[^"]+("\s*#.*)?$/\1${{ github.sha }}\2/' \
             infra/charts/e-shuri-app/values.yaml \
             infra/charts/e-shuri-website/values.yaml
           git config user.name "e-shuri-frontend-ci"
