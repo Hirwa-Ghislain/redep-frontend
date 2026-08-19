@@ -45,11 +45,11 @@ export function FileDrop({ label, hint, files, onChange, onFilesChange, accept =
         onDragLeave={() => setDragging(false)}
         onDrop={(e) => { e.preventDefault(); setDragging(false); addFiles(e.dataTransfer.files); }}
         className={cn(
-          "flex flex-col items-center justify-center gap-1.5 rounded-(--radius-card) border-2 border-dashed px-4 py-6 transition-colors",
-          dragging ? "border-primary bg-primary-soft/50" : "border-line-strong bg-paper/60 hover:border-faint",
+          "group flex flex-col items-center justify-center gap-1.5 rounded-(--radius-card) border-2 border-dashed px-4 py-6 transition-[border-color,background-color,box-shadow,transform] duration-200 active:scale-[0.99]",
+          dragging ? "border-primary bg-primary-soft/70 scale-[1.01] shadow-[0_8px_24px_rgb(27_122_83_/_0.12)]" : "border-line-strong bg-paper/60 hover:border-primary/60 hover:bg-primary-soft/35 hover:-translate-y-px hover:shadow-[0_7px_20px_rgb(15_23_18_/_0.07)]",
         )}
       >
-        <Upload className="size-5 text-muted" aria-hidden />
+        <Upload className="size-5 text-muted transition-[color,transform] duration-200 group-hover:text-primary group-hover:-translate-y-0.5" aria-hidden />
         <span className="text-[13.5px] text-ink font-medium">Drop files here or click to browse</span>
         <span className="text-[12px] text-faint">{accept.replaceAll(",", " · ")}</span>
       </button>
@@ -65,7 +65,7 @@ export function FileDrop({ label, hint, files, onChange, onFilesChange, accept =
       {files.length > 0 && (
         <ul className="flex flex-col gap-1.5 mt-1">
           {files.map((name) => (
-            <li key={name} className="flex items-center gap-2 rounded-(--radius-ctl) border border-line bg-surface px-3 py-2 text-[13px]">
+            <li key={name} className="flex items-center gap-2 rounded-(--radius-ctl) border border-line bg-surface px-3 py-2 text-[13px] transition-[border-color,box-shadow,transform] duration-200 hover:border-primary/30 hover:shadow-(--shadow-card) hover:-translate-y-px">
               <FileText className="size-4 text-primary-deep shrink-0" aria-hidden />
               <span className="truncate flex-1 text-ink">{name}</span>
               <button

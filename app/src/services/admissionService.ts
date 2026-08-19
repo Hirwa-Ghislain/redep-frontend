@@ -56,6 +56,7 @@ function flattenApplications(children: BackendChildWithApplications[], parentId:
     .flatMap((child) =>
       child.applications.map((app): AdmissionApplication => ({
         id: app.id,
+        studentId: child.id,
         schoolId: app.schoolId ?? app.school?.id ?? "",
         schoolName: app.school?.name,
         parentId,

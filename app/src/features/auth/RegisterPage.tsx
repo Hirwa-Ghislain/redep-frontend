@@ -225,6 +225,7 @@ export default function RegisterPage() {
         <Input
           label="Password"
           type="password"
+          showPasswordToggle
           autoComplete="new-password"
           value={form.password}
           onChange={set("password")}
@@ -235,6 +236,7 @@ export default function RegisterPage() {
         <Input
           label="Confirm password"
           type="password"
+          showPasswordToggle
           autoComplete="new-password"
           value={form.confirmPassword}
           onChange={set("confirmPassword")}

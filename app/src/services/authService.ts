@@ -15,6 +15,19 @@ export interface RegisterInput {
   preferredLanguage?: "EN" | "RW" | "FR";
 }
 
+export interface InvitedRegisterInput {
+  token: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  nationalId: string;
+  dateOfBirth: string;
+  password: string;
+  confirmPassword: string;
+  preferredLanguage?: "EN" | "RW" | "FR";
+}
+
 /** Returned by `register()` — the backend requires OTP verification before a session exists. */
 export interface PendingVerification {
   email: string;
@@ -62,6 +75,17 @@ export const authService = {
       preferredLanguage: input.preferredLanguage ?? "EN",
     });
     return { email: input.email.trim().toLowerCase(), phone: input.phone };
+  },
+
+  // POST /api/v1/auth/register-invited — the signed token fixes the school, email and
+  // TEACHER/ACCOUNTANT role. A successful registration returns a session immediately.
+  async registerInvited(input: InvitedRegisterInput): Promise<AuthSession> {
+    const res = await http.post<AuthTokenResponse>("/auth/register-invited", {
+      ...input,
+      email: input.email.trim().toLowerCase(),
+      preferredLanguage: input.preferredLanguage ?? "EN",
+    });
+    return toSession(res);
   },
 
   // POST /api/v1/auth/verify-account — completes registration and returns a session.

@@ -245,6 +245,17 @@ export const schoolService = {
     return res.destination;
   },
 
+  /** PATCH /schools/:schoolId/payment-destinations/:destinationId */
+  async updatePaymentDestination(schoolId: string, destinationId: string, input: PaymentDestinationInput): Promise<PaymentDestination> {
+    const res = await http.patch<{ destination: PaymentDestination }>(`/schools/${schoolId}/payment-destinations/${destinationId}`, input);
+    return res.destination;
+  },
+
+  /** DELETE /schools/:schoolId/payment-destinations/:destinationId */
+  async removePaymentDestination(schoolId: string, destinationId: string): Promise<void> {
+    await http.delete(`/schools/${schoolId}/payment-destinations/${destinationId}`);
+  },
+
   // --- NESA location lookups (live backend only — power the province → village
   // cascading selects on the real school-creation form). GET /api/v1/locations/provinces
   async nesaProvinces(): Promise<NesaLocationOption[]> {
@@ -304,6 +315,7 @@ export interface PaymentProviderOption {
 }
 
 export interface PaymentDestinationInput {
+  feeId?: string;
   label: string;
   providerCode: string;
   accountName: string;

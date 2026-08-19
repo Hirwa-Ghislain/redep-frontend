@@ -33,7 +33,7 @@ export function DataTable<T>({ columns, rows, keyField, onRowClick, loading, emp
     a === "right" ? "text-right" : a === "center" ? "text-center" : "text-left";
 
   return (
-    <div className="overflow-hidden rounded-(--radius-card) border border-line bg-surface shadow-(--shadow-card)">
+    <div className="overflow-hidden rounded-(--radius-card) border border-line bg-surface shadow-(--shadow-card) transition-[border-color,box-shadow] duration-200 hover:border-line-strong hover:shadow-[0_5px_18px_rgb(15_23_18_/_0.06)]">
       <div className="overflow-x-auto">
         <table className="w-full text-[13px]">
           <thead>
@@ -77,7 +77,7 @@ export function DataTable<T>({ columns, rows, keyField, onRowClick, loading, emp
                   onClick={onRowClick ? () => onRowClick(row) : undefined}
                   className={cn(
                     "border-b border-line last:border-0 transition-colors",
-                    onRowClick && "cursor-pointer hover:bg-paper/80",
+                    onRowClick && "group cursor-pointer hover:bg-primary-soft/45 hover:shadow-[inset_3px_0_0_var(--color-primary)] active:bg-primary-soft/70",
                   )}
                 >
                   {columns.map((c) => (
@@ -98,7 +98,7 @@ export function DataTable<T>({ columns, rows, keyField, onRowClick, loading, emp
           </span>
           <div className="flex items-center gap-1">
             <button
-              className="p-1.5 rounded-lg hover:bg-ink/5 disabled:opacity-40 transition-colors"
+              className="p-1.5 rounded-lg hover:bg-primary-soft hover:text-primary-deep hover:-translate-x-0.5 active:scale-90 disabled:opacity-40 transition-all duration-200"
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               disabled={safePage === 0}
               aria-label="Previous page"
@@ -109,7 +109,7 @@ export function DataTable<T>({ columns, rows, keyField, onRowClick, loading, emp
               {safePage + 1} / {pages}
             </span>
             <button
-              className="p-1.5 rounded-lg hover:bg-ink/5 disabled:opacity-40 transition-colors"
+              className="p-1.5 rounded-lg hover:bg-primary-soft hover:text-primary-deep hover:translate-x-0.5 active:scale-90 disabled:opacity-40 transition-all duration-200"
               onClick={() => setPage((p) => Math.min(pages - 1, p + 1))}
               disabled={safePage >= pages - 1}
               aria-label="Next page"

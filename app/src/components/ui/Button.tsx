@@ -14,11 +14,11 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variants: Record<Variant, string> = {
-  primary: "bg-primary text-white hover:bg-primary-deep border border-transparent shadow-(--shadow-card)",
-  secondary: "bg-surface text-ink border border-line-strong hover:border-faint hover:bg-paper/60 shadow-(--shadow-card)",
+  primary: "bg-primary text-white hover:bg-primary-deep hover:shadow-[0_8px_20px_rgb(27_122_83_/_0.22)] border border-transparent shadow-(--shadow-card)",
+  secondary: "bg-surface text-ink border border-line-strong hover:border-primary/35 hover:bg-primary-soft/45 hover:text-primary-deep hover:shadow-[0_6px_16px_rgb(15_23_18_/_0.08)] shadow-(--shadow-card)",
   ghost: "bg-transparent text-muted hover:text-ink hover:bg-ink/5 border border-transparent",
-  danger: "bg-clay text-white hover:bg-clay-deep border border-transparent shadow-(--shadow-card)",
-  gold: "bg-gold text-ink hover:bg-[#d99b0e] border border-transparent shadow-(--shadow-card)",
+  danger: "bg-clay text-white hover:bg-clay-deep hover:shadow-[0_8px_20px_rgb(196_83_46_/_0.2)] border border-transparent shadow-(--shadow-card)",
+  gold: "bg-gold text-ink hover:bg-[#d99b0e] hover:shadow-[0_8px_20px_rgb(231_169_23_/_0.22)] border border-transparent shadow-(--shadow-card)",
 };
 
 const sizes: Record<Size, string> = {
@@ -37,7 +37,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       disabled={disabled || loading}
       className={cn(
         "inline-flex items-center justify-center rounded-(--radius-ctl) font-medium select-none",
-        "transition-[background-color,border-color,transform,opacity] duration-150 active:scale-[0.98]",
+        "transition-[background-color,border-color,color,box-shadow,transform,opacity] duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.97]",
         "disabled:opacity-50 disabled:pointer-events-none",
         variants[variant],
         sizes[size],

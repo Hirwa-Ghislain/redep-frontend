@@ -11,12 +11,14 @@ import { LogoMark } from "@/components/layout/Logo";
 import { useAuth } from "@/hooks/useAuth";
 import { paymentService } from "@/services/paymentService";
 import { toast } from "@/stores/uiStore";
+import { useI18nStore } from "@/stores/i18nStore";
 import { formatDateTime, formatRWF } from "@/lib/format";
 import { CHANNEL_LABEL, FEE_CATEGORY_LABEL } from "@/lib/status";
 import type { Receipt } from "@/types";
 
 export default function ReceiptsPage() {
   const { user } = useAuth();
+  const t = useI18nStore((state) => state.t);
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<Receipt | null>(null);
   const [downloading, setDownloading] = useState(false);
@@ -40,7 +42,7 @@ export default function ReceiptsPage() {
       link.remove();
       URL.revokeObjectURL(url);
     } catch {
-      toast({ title: "Download failed", description: "Could not fetch the receipt PDF. Try again.", variant: "error" });
+      toast({ title: t("receipts.downloadFailedTitle", "Download failed"), description: t("receipts.downloadFailed", "Could not fetch the receipt PDF. Try again."), variant: "error" });
     } finally {
       setDownloading(false);
     }
@@ -49,43 +51,43 @@ export default function ReceiptsPage() {
   return (
     <PageTransition>
       <PageHeader
-        title="Receipts"
-        description="Every payment issues a digital receipt — searchable, verifiable, downloadable."
+        title={t("receipts.title", "Receipts")}
+        description={t("receipts.description", "Track every completed payment with a searchable and downloadable receipt.")}
       />
-      <SearchInput value={q} onChange={setQ} placeholder="Search reference, child or school…" className="w-full sm:w-72 mb-4" />
+      <SearchInput value={q} onChange={setQ} placeholder={t("receipts.search", "Search reference, child or school…")} className="w-full sm:w-72 mb-4" />
 
       <DataTable<Receipt>
         loading={isLoading}
         columns={[
-          { key: "issuedAt", header: "Issued", render: (r) => <span className="tnum">{formatDateTime(r.issuedAt)}</span> },
-          { key: "reference", header: "Reference", render: (r) => <span className="tnum font-medium">{r.reference}</span> },
-          { key: "studentName", header: "Child" },
-          { key: "schoolName", header: "School" },
-          { key: "category", header: "Category", render: (r) => FEE_CATEGORY_LABEL[r.category] },
-          { key: "amount", header: "Amount", align: "right", render: (r) => <span className="tnum font-semibold">{formatRWF(r.amount)}</span> },
+          { key: "issuedAt", header: t("receipts.issued", "Issued"), render: (r) => <span className="tnum">{formatDateTime(r.issuedAt)}</span> },
+          { key: "reference", header: t("receipts.reference", "Reference"), render: (r) => <span className="tnum font-medium">{r.reference}</span> },
+          { key: "studentName", header: t("receipts.child", "Child") },
+          { key: "schoolName", header: t("receipts.school", "School") },
+          { key: "category", header: t("receipts.category", "Category"), render: (r) => FEE_CATEGORY_LABEL[r.category] },
+          { key: "amount", header: t("receipts.amount", "Amount"), align: "right", render: (r) => <span className="tnum font-semibold">{formatRWF(r.amount)}</span> },
         ]}
         rows={receipts}
         keyField={(r) => r.id}
         onRowClick={setSelected}
         pageSize={10}
-        empty="No receipts yet — they appear as soon as a payment completes."
+        empty={t("receipts.empty", "No receipts yet — they appear as soon as a payment completes.")}
       />
 
       {/* Receipt viewer */}
       <Modal
         open={Boolean(selected)}
         onClose={() => setSelected(null)}
-        title="Receipt"
+        title={t("receipts.receipt", "Receipt")}
         size="md"
         footer={
           <>
-            <Button variant="ghost" onClick={() => setSelected(null)}>Close</Button>
+            <Button variant="ghost" onClick={() => setSelected(null)}>{t("receipts.close", "Close")}</Button>
             <Button
               icon={<Download className="size-4" />}
               loading={downloading}
               onClick={() => selected && downloadReceipt(selected)}
             >
-              Download PDF
+              {t("receipts.download", "Download PDF")}
             </Button>
           </>
         }
@@ -96,7 +98,7 @@ export default function ReceiptsPage() {
               <div className="flex items-center gap-3">
                 <LogoMark size={30} />
                 <div>
-                  <p className="font-display font-bold text-paper text-[14px] leading-none">OFFICIAL RECEIPT</p>
+                  <p className="font-display font-bold text-paper text-[14px] leading-none">{t("receipts.official", "Official receipt").toUpperCase()}</p>
                   <p className="text-[11px] text-paper/50 mt-1">Rwanda Education Digital Ecosystem Platform</p>
                 </div>
               </div>
@@ -104,21 +106,21 @@ export default function ReceiptsPage() {
             </div>
             <div className="px-5 py-5">
               <dl className="grid grid-cols-2 gap-x-4 gap-y-3.5 text-[13.5px]">
-                <div><dt className="text-muted text-[12px]">School</dt><dd className="font-medium text-ink">{selected.schoolName}</dd></div>
+                <div><dt className="text-muted text-[12px]">{t("receipts.school", "School")}</dt><dd className="font-medium text-ink">{selected.schoolName}</dd></div>
                 {selected.termLabel && (
                   <div><dt className="text-muted text-[12px]">Term</dt><dd className="font-medium text-ink">{selected.termLabel}</dd></div>
                 )}
-                <div><dt className="text-muted text-[12px]">Student</dt><dd className="font-medium text-ink">{selected.studentName}</dd></div>
-                <div><dt className="text-muted text-[12px]">Paid by</dt><dd className="font-medium text-ink">{selected.parentName}</dd></div>
-                <div><dt className="text-muted text-[12px]">Category</dt><dd className="font-medium text-ink">{FEE_CATEGORY_LABEL[selected.category]}</dd></div>
-                <div><dt className="text-muted text-[12px]">Channel</dt><dd className="font-medium text-ink">{CHANNEL_LABEL[selected.channelType]}</dd></div>
+                <div><dt className="text-muted text-[12px]">{t("receipts.child", "Student")}</dt><dd className="font-medium text-ink">{selected.studentName}</dd></div>
+                <div><dt className="text-muted text-[12px]">{t("receipts.paidBy", "Paid by")}</dt><dd className="font-medium text-ink">{selected.parentName}</dd></div>
+                <div><dt className="text-muted text-[12px]">{t("receipts.category", "Category")}</dt><dd className="font-medium text-ink">{FEE_CATEGORY_LABEL[selected.category]}</dd></div>
+                <div><dt className="text-muted text-[12px]">{t("receipts.channel", "Channel")}</dt><dd className="font-medium text-ink">{CHANNEL_LABEL[selected.channelType]}</dd></div>
                 <div className="col-span-2">
-                  <dt className="text-muted text-[12px]">Date & time</dt>
+                  <dt className="text-muted text-[12px]">{t("receipts.dateTime", "Date & time")}</dt>
                   <dd className="font-medium text-ink tnum">{formatDateTime(selected.issuedAt)}</dd>
                 </div>
               </dl>
               <div className="mt-5 flex items-center justify-between rounded-xl bg-primary-soft px-4 py-3.5">
-                <span className="text-[13px] font-medium text-primary-deep">Amount paid</span>
+                <span className="text-[13px] font-medium text-primary-deep">{t("receipts.amountPaid", "Amount paid")}</span>
                 <span className="font-display text-[22px] font-bold text-primary-deep tnum">{formatRWF(selected.amount)}</span>
               </div>
               <p className="flex items-center gap-1.5 text-[11.5px] text-faint mt-4">

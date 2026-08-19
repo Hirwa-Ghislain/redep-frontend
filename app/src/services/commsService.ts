@@ -34,6 +34,11 @@ interface BackendThreadSummary {
   schoolName: string;
   parentId: string;
   parentName: string;
+  recipientId: string;
+  recipientName: string;
+  recipientRole: RoleKey;
+  studentId: string | null;
+  studentName: string | null;
   lastMessageAt: string;
   lastMessagePreview: string | null;
   unreadCount: number;
@@ -43,8 +48,11 @@ interface BackendThreadMessage {
   id: string;
   senderId: string;
   senderName: string;
+  recipientId: string;
+  recipientName: string;
   body: string;
   createdAt: string;
+  readAt: string | null;
 }
 
 interface BackendThreadDetail extends Omit<BackendThreadSummary, "lastMessageAt" | "lastMessagePreview" | "unreadCount"> {
@@ -85,8 +93,10 @@ function threadFromBackend(t: BackendThreadSummary): MessageThread {
     schoolId: t.schoolId,
     participants: [
       { id: t.parentId, name: t.parentName, role: "PARENT" },
-      { id: t.schoolId, name: t.schoolName, role: "SCHOOL_ADMIN" },
+      { id: t.recipientId, name: t.recipientName, role: t.recipientRole },
     ],
+    studentId: t.studentId ?? undefined,
+    studentName: t.studentName ?? undefined,
     lastMessageAt: t.lastMessageAt,
     lastMessagePreview: t.lastMessagePreview ?? "",
     unreadCount: t.unreadCount,
@@ -185,9 +195,12 @@ export const commsService = {
       threadId,
       senderId: m.senderId,
       senderName: m.senderName,
-      senderRole: m.senderId === res.thread.parentId ? "PARENT" : "SCHOOL_ADMIN",
+      senderRole: m.senderId === res.thread.parentId ? "PARENT" : res.thread.recipientRole,
+      recipientId: m.recipientId,
+      recipientName: m.recipientName,
       body: m.body,
       sentAt: m.createdAt,
+      readAt: m.readAt,
     }));
   },
 
@@ -202,8 +215,11 @@ export const commsService = {
       senderId: res.message.senderId,
       senderName: res.message.senderName,
       senderRole: input.senderRole,
+      recipientId: res.message.recipientId,
+      recipientName: res.message.recipientName,
       body: res.message.body,
       sentAt: res.message.createdAt,
+      readAt: res.message.readAt,
     };
   },
 
@@ -216,8 +232,12 @@ export const commsService = {
     participants: ThreadParticipant[];
     firstMessage: { senderId: string; senderName: string; senderRole: RoleKey; body: string };
   }): Promise<MessageThread> {
+    const recipient = input.participants.find((participant) => participant.role === "TEACHER");
+    if (!recipient || !input.studentId) throw { code: "VALIDATION", message: "A student and teacher are required.", status: 400 };
     const res = await http.post<{ thread: BackendThreadDetail }>("/messaging/threads", {
       schoolId: input.schoolId,
+      recipientId: recipient.id,
+      studentId: input.studentId,
       subject: input.subject,
       message: input.firstMessage.body,
     });
@@ -228,6 +248,11 @@ export const commsService = {
       schoolName: res.thread.schoolName,
       parentId: res.thread.parentId,
       parentName: res.thread.parentName,
+      recipientId: res.thread.recipientId,
+      recipientName: res.thread.recipientName,
+      recipientRole: res.thread.recipientRole,
+      studentId: res.thread.studentId,
+      studentName: res.thread.studentName,
       lastMessageAt: res.thread.updatedAt,
       lastMessagePreview: res.thread.messages.at(-1)?.body ?? null,
       unreadCount: 0,

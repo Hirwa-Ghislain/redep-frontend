@@ -28,8 +28,8 @@ export function Tabs({ items, value, onChange, className }: TabsProps) {
             aria-selected={active}
             onClick={() => onChange(item.value)}
             className={cn(
-              "relative flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium whitespace-nowrap transition-colors",
-              active ? "text-ink" : "text-muted hover:text-ink",
+              "relative flex items-center gap-1.5 rounded-t-lg px-3 py-2 text-[13px] font-medium whitespace-nowrap transition-[color,background-color,transform] duration-200 active:scale-[0.97]",
+              active ? "text-ink bg-primary-soft/35" : "text-muted hover:text-primary-deep hover:bg-primary-soft/45 hover:-translate-y-px",
             )}
           >
             {item.icon}

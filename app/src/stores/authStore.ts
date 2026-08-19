@@ -11,6 +11,7 @@ interface AuthState {
   login: (email: string, password: string) => Promise<User>;
   /** Returns a session directly in mock mode; in live mode, returns pending-OTP info instead. */
   register: (input: Parameters<typeof authService.register>[0]) => Promise<User | PendingVerification>;
+  registerInvited: (input: Parameters<typeof authService.registerInvited>[0]) => Promise<User>;
   verifyAccount: (input: { verificationMethod: VerificationMethod; identifier: string; otp: string }) => Promise<User>;
   setActiveRole: (role: RoleKey) => void;
   /** Refetches the current user from the backend and merges it into the session (e.g. after a
@@ -40,6 +41,12 @@ export const useAuthStore = create<AuthState>()(
         if (isPendingVerification(result)) return result;
         set({ session: result, activeRole: null });
         return result.user;
+      },
+
+      async registerInvited(input) {
+        const session = await authService.registerInvited(input);
+        set({ session, activeRole: null });
+        return session.user;
       },
 
       async verifyAccount(input) {

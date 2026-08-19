@@ -6,15 +6,17 @@ export interface CardProps extends HTMLAttributes<HTMLDivElement> {
   hover?: boolean;
 }
 
-export function Card({ padded = true, hover, className, children, ...rest }: CardProps) {
+export function Card({ padded = true, hover, className, children, onClick, ...rest }: CardProps) {
+  const interactive = hover || onClick !== undefined;
   return (
     <div
       className={cn(
         "bg-surface border border-line rounded-(--radius-card) shadow-(--shadow-card)",
         padded && "p-4 sm:p-5",
-        hover && "transition-[border-color,box-shadow,transform] duration-200 hover:border-line-strong hover:shadow-(--shadow-pop) hover:-translate-y-px",
+        interactive && "interactive-surface",
         className,
       )}
+      onClick={onClick}
       {...rest}
     >
       {children}

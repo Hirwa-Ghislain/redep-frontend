@@ -209,6 +209,8 @@ export type BackendApplicationStatus = "DRAFT" | "VALIDATED" | "PENDING_PAYMENT"
 
 export interface AdmissionApplication {
   id: ID;
+  /** Child linked to this application; used to resume outstanding admission payments. */
+  studentId?: ID;
   schoolId: ID;
   schoolName?: string;
   parentId: ID;
@@ -356,8 +358,11 @@ export interface Message {
   senderId: ID;
   senderName: string;
   senderRole: RoleKey;
+  recipientId: ID;
+  recipientName: string;
   body: string;
   sentAt: string;
+  readAt?: string | null;
 }
 
 export type NotificationType =

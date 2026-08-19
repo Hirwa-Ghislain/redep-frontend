@@ -80,6 +80,7 @@ export default function ForgotPasswordPage() {
           <Input
             label="New password"
             type="password"
+            showPasswordToggle
             autoComplete="new-password"
             icon={<KeyRound />}
             hint="At least 10 characters, with upper & lower case, a number, and a special character."
@@ -91,6 +92,7 @@ export default function ForgotPasswordPage() {
           <Input
             label="Confirm new password"
             type="password"
+            showPasswordToggle
             autoComplete="new-password"
             icon={<KeyRound />}
             value={confirmPassword}

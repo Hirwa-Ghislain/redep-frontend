@@ -49,7 +49,8 @@ export interface RealAccountingOverview {
   };
   charts: {
     monthlyRevenue: { month: string; revenue: number }[];
-    classesByUnpaid: { classId: string; className: string; assessed: number; paid: number; unpaid: number }[];
+    classesByUnpaid: { classId: string; className: string; students: number; assessed: number; paid: number; unpaid: number; collectionRate: number }[];
+    classesByPaid: { classId: string; className: string; students: number; assessed: number; paid: number; unpaid: number; collectionRate: number }[];
     feeBreakdown: { feeType: string; feeName: string; assessed: number; paid: number; unpaid: number }[];
     chargeStatus: { status: string; count: number }[];
   };
@@ -61,6 +62,17 @@ export interface RealStudentBalance {
   totalDue: number;
   totalPaid: number;
   outstanding: number;
+  paymentStatus: "PAID" | "PARTIALLY_PAID" | "UNPAID";
+  charges: { id: string; feeId: string; feeName: string; feeType: string; amountDue: number; amountPaid: number; outstanding: number; status: string; installmentCount: number; nextPaymentDue: string | null; partialReason: string | null }[];
+}
+
+export interface OptionalFeeParticipation {
+  summary: { fee: { id: string; name: string; amount: number; currency: string; isActive: boolean }; totalStudents: number; concerned: number; declined: number; pending: number }[];
+  students: { student: { id: string; firstName: string; lastName: string }; class: { id: string; name: string }; fee: { id: string; name: string; amount: number; currency: string }; status: "PENDING" | "CONCERNED" | "DECLINED"; decidedAt: string | null }[];
+}
+export interface ParentOptionalFee {
+  id: string; schoolId: string; schoolName: string; name: string; amount: number; currency: string;
+  status: "PENDING" | "CONCERNED" | "DECLINED"; decidedAt: string | null;
 }
 
 function query(params: Record<string, string | number | undefined>): string {
@@ -135,17 +147,29 @@ export const paymentService = {
   // GET /api/v1/parents/:id/payments — the real backend has no flat payment-history endpoint;
   // derived by flattening each child's charges (only COMPLETED payments are ever returned there).
   async listByParent(parentId: string): Promise<Payment[]> {
-    const rows = await fetchAllPaymentsForParent();
-    return rows.map(({ payment, charge, child }) => ({
+    const res = await http.get<{ payments: Array<{
+      id: string;
+      schoolId: string;
+      studentId: string;
+      chargeId: string;
+      category: "APPLICATION" | "TUITION" | "OTHER";
+      amount: number;
+      paymentMethod: "MOMO" | "CARD";
+      reference: string;
+      status: "PENDING" | "COMPLETED" | "FAILED";
+      paidAt: string | null;
+      createdAt: string;
+    }> }>("/parents/payments");
+    return res.payments.map((payment) => ({
       id: payment.id,
-      schoolId: child.enrollments[0]?.schoolId ?? "",
-      studentId: child.id,
+      schoolId: payment.schoolId,
+      studentId: payment.studentId,
       parentId,
-      feeStructureId: charge.id,
-      category: charge.schoolFee.type,
-      amount: Number(payment.amount),
+      feeStructureId: payment.chargeId,
+      category: payment.category,
+      amount: payment.amount,
       channelType: paymentMethodToChannel(payment.paymentMethod),
-      reference: payment.receiptNumber ?? payment.id,
+      reference: payment.reference,
       status: payment.status,
       paidAt: payment.paidAt ?? payment.createdAt,
       termId: undefined,
@@ -155,29 +179,10 @@ export const paymentService = {
   // GET /api/v1/parents/:id/receipts?q= — derived the same way as listByParent in real mode
   // (only COMPLETED payments with a receiptNumber count as a receipt).
   async receiptsByParent(parentId: string, q?: string): Promise<Receipt[]> {
-    const rows = await fetchAllPaymentsForParent();
-    let out: Receipt[] = rows
-      .filter(({ payment }) => payment.status === "COMPLETED" && payment.receiptNumber !== null)
-      .map(({ payment, charge, child }) => ({
-        id: payment.id,
-        paymentId: payment.id,
-        reference: payment.receiptNumber!,
-        schoolId: child.enrollments[0]?.schoolId ?? "",
-        schoolName: child.enrollments[0]?.school.name ?? "—",
-        studentId: child.id,
-        studentName: `${child.firstName} ${child.lastName}`,
-        parentName: "",
-        amount: Number(payment.amount),
-        category: charge.schoolFee.type,
-        channelType: paymentMethodToChannel(payment.paymentMethod),
-        termLabel: "",
-        issuedAt: payment.paidAt ?? payment.createdAt,
-      }));
-    if (q) {
-      const s = q.toLowerCase();
-      out = out.filter((r) => r.reference.toLowerCase().includes(s) || r.studentName.toLowerCase().includes(s) || r.schoolName.toLowerCase().includes(s));
-    }
-    return out;
+    void parentId;
+    const suffix = q ? `?q=${encodeURIComponent(q)}` : "";
+    const res = await http.get<{ receipts: Receipt[] }>(`/parents/receipts${suffix}`);
+    return res.receipts;
   },
 
   /** Real accounting ledger. GET /schools/:schoolId/accounting/payments */
@@ -197,6 +202,19 @@ export const paymentService = {
   async realStudentBalances(schoolId: string, filters: { status?: string; classId?: string; search?: string } = {}): Promise<RealStudentBalance[]> {
     const res = await http.get<{ students: RealStudentBalance[] }>(`/schools/${schoolId}/accounting/student-balances${query(filters)}`);
     return res.students;
+  },
+
+  async optionalFeeParticipation(schoolId: string, filters: { feeId?: string; classId?: string; status?: string } = {}): Promise<OptionalFeeParticipation> {
+    return http.get<OptionalFeeParticipation>(`/schools/${schoolId}/accounting/optional-fees${query(filters)}`);
+  },
+
+  async parentOptionalFees(studentId: string): Promise<ParentOptionalFee[]> {
+    const res = await http.get<{ fees: ParentOptionalFee[] }>(`/parents/children/${studentId}/optional-fees`);
+    return res.fees;
+  },
+
+  async chooseOptionalFee(studentId: string, feeId: string, concerned: boolean): Promise<void> {
+    await http.patch(`/parents/children/${studentId}/optional-fees/${feeId}`, { concerned });
   },
 
   /**
@@ -239,13 +257,14 @@ export const paymentService = {
   async initiatePayment(chargeId: string, input: InitiatePaymentInput): Promise<InitiatePaymentResult> {
     const res = await http.post<{
       payment: { id: string };
-      checkout: { checkoutUrl: string | null; instructions: string | null; status: string; message: string };
+      checkout: { checkoutUrl: string | null; instructions: string | null; payerPhone?: string | null; status: string; message: string };
     }>(`/parents/charges/${chargeId}/payments`, input);
     return {
       paymentId: res.payment.id,
       status: "PENDING",
       checkoutUrl: res.checkout.checkoutUrl,
       instructions: res.checkout.instructions,
+      payerPhone: res.checkout.payerPhone ?? null,
       message: res.checkout.message,
     };
   },
@@ -299,6 +318,7 @@ export interface InitiatePaymentResult {
   status: "PENDING" | "COMPLETED" | "FAILED";
   checkoutUrl: string | null;
   instructions: string | null;
+  payerPhone: string | null;
   message: string;
 }
 

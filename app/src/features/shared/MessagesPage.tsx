@@ -7,7 +7,6 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { UnderDevelopment } from "@/components/ui/UnderDevelopment";
 import { useAuth } from "@/hooks/useAuth";
 import { commsService } from "@/services/commsService";
 import { fullName, timeAgo, formatDateTime } from "@/lib/format";
@@ -25,18 +24,6 @@ import { cn } from "@/lib/utils";
 export default function MessagesPage() {
   const { user, role } = useAuth();
 
-  if (role === "TEACHER") {
-    return (
-      <PageTransition>
-        <PageHeader title="Messages" description="Direct conversations — every thread stays linked to a student." />
-        <UnderDevelopment
-          title="Direct messages"
-          description="Teacher messaging isn't available yet — parents currently message the school office directly."
-        />
-      </PageTransition>
-    );
-  }
-
   return <MessagesThreadView user={user} role={role} />;
 }
 
@@ -53,6 +40,7 @@ function MessagesThreadView({ user, role }: { user: ReturnType<typeof useAuth>["
     queryFn: () =>
       isSchoolSide ? commsService.threadsForSchool(user!.schoolId!) : commsService.threadsFor(user!.id),
     enabled: Boolean(user),
+    refetchInterval: 10_000,
   });
 
   const active = threads.find((t) => t.id === activeId) ?? threads[0] ?? null;
@@ -61,6 +49,7 @@ function MessagesThreadView({ user, role }: { user: ReturnType<typeof useAuth>["
     queryKey: ["messages", active?.id],
     queryFn: () => commsService.messages(active!.id),
     enabled: Boolean(active),
+    refetchInterval: 5_000,
   });
 
   const send = useMutation({
@@ -149,7 +138,7 @@ function MessagesThreadView({ user, role }: { user: ReturnType<typeof useAuth>["
                   </>
                 ) : (
                   messages.map((m) => {
-                    const mine = m.senderId === user?.id || (isSchoolSide && m.senderRole === role);
+                    const mine = m.senderId === user?.id;
                     return (
                       <div key={m.id} className={cn("flex flex-col max-w-[70%]", mine ? "ml-auto items-end" : "items-start")}>
                         <div
@@ -161,7 +150,7 @@ function MessagesThreadView({ user, role }: { user: ReturnType<typeof useAuth>["
                           {m.body}
                         </div>
                         <span className="text-[11px] text-faint mt-1 px-1">
-                          {mine ? "You" : m.senderName} · {formatDateTime(m.sentAt)}
+                          {mine ? "You" : m.senderName} → {m.recipientName} · {formatDateTime(m.sentAt)}
                         </span>
                       </div>
                     );
