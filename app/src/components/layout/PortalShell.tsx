@@ -60,17 +60,17 @@ function SidebarNav({ nav, onNavigate }: { nav: NavSection[]; onNavigate?: () =>
                     onClick={onNavigate}
                     className={({ isActive }) =>
                       cn(
-                        "group relative flex items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-[13px] transition-colors duration-150",
+                        "group relative flex items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-[13px] transition-[color,background-color,transform,box-shadow] duration-200 active:scale-[0.98]",
                         isActive
-                          ? "bg-white text-pine-deep font-semibold shadow-(--shadow-card)"
-                          : "font-medium text-white/60 hover:bg-white/10 hover:text-white",
+                          ? "bg-white text-pine-deep font-semibold shadow-[0_5px_16px_rgb(0_0_0_/_0.16)]"
+                          : "font-medium text-white/60 hover:bg-white/12 hover:text-white hover:translate-x-1",
                       )
                     }
                   >
                     {({ isActive }) => (
                       <>
                         <item.icon
-                          className={cn("size-4 shrink-0", isActive ? "text-primary" : "text-white/45 group-hover:text-white/80")}
+                          className={cn("size-4 shrink-0 transition-[color,transform] duration-200 group-hover:scale-110", isActive ? "text-primary" : "text-white/45 group-hover:text-gold")}
                           aria-hidden
                         />
                         {item.label}

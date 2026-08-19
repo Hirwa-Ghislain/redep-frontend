@@ -17,6 +17,7 @@ import { UnderDevelopment } from "@/components/ui/UnderDevelopment";
 import { useAuth } from "@/hooks/useAuth";
 import { commsService } from "@/services/commsService";
 import { fetchParentAttendance, studentService } from "@/services/studentService";
+import { paymentService } from "@/services/paymentService";
 import { toast } from "@/stores/uiStore";
 import { formatDate, formatRWF, fullName, percent } from "@/lib/format";
 import { ATTENDANCE_STATUS, FEE_CATEGORY_LABEL, STUDENT_STATUS } from "@/lib/status";
@@ -38,6 +39,18 @@ export default function ChildDetailPage() {
   const { data: realAttendance } = useQuery({
     queryKey: ["student-attendance", studentId],
     queryFn: () => fetchParentAttendance(studentId),
+  });
+  const { data: optionalFees = [] } = useQuery({
+    queryKey: ["optional-fees", studentId],
+    queryFn: () => paymentService.parentOptionalFees(studentId),
+  });
+  const chooseOptionalFee = useMutation({
+    mutationFn: ({ feeId, concerned }: { feeId: string; concerned: boolean }) => paymentService.chooseOptionalFee(studentId, feeId, concerned),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["optional-fees", studentId] });
+      void qc.invalidateQueries({ queryKey: ["student-context", studentId] });
+      toast({ title: "Service choice saved", description: "The school accounting list has been updated.", variant: "success" });
+    },
   });
   const balances: FeeBalance[] = (context?.student.charges ?? []).map((c) => ({
     studentId,
@@ -232,6 +245,24 @@ export default function ChildDetailPage() {
               Go to payments
             </Button>
           </Card>
+          {optionalFees.length > 0 && (
+            <Card className="lg:col-span-2">
+              <CardHeader title="Optional school services" description="Tell the school which services this child uses. Declined services are not treated as unpaid fees." />
+              <div className="divide-y divide-line">
+                {optionalFees.map((fee) => (
+                  <div key={fee.id} className="flex flex-wrap items-center gap-3 py-3 first:pt-0 last:pb-0">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13.5px] font-semibold text-ink">{fee.name}</p>
+                      <p className="text-[12px] text-muted">{fee.schoolName} · {formatRWF(fee.amount)}</p>
+                    </div>
+                    <Badge variant={fee.status === "CONCERNED" ? "success" : fee.status === "DECLINED" ? "neutral" : "warning"}>{fee.status === "CONCERNED" ? "Participating" : fee.status === "DECLINED" ? "Not participating" : "Choice needed"}</Badge>
+                    <Button size="sm" variant={fee.status === "CONCERNED" ? "primary" : "secondary"} disabled={chooseOptionalFee.isPending} onClick={() => chooseOptionalFee.mutate({ feeId: fee.id, concerned: true })}>Uses service</Button>
+                    <Button size="sm" variant="ghost" disabled={chooseOptionalFee.isPending} onClick={() => chooseOptionalFee.mutate({ feeId: fee.id, concerned: false })}>Does not use</Button>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
         </div>
       )}
 

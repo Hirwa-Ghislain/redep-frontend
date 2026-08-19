@@ -8,6 +8,7 @@ import { LogoMark } from "@/components/layout/Logo";
 /* ----------------------------------- auth ---------------------------------- */
 const LoginPage = lazy(() => import("@/features/auth/LoginPage"));
 const RegisterPage = lazy(() => import("@/features/auth/RegisterPage"));
+const InvitedRegisterPage = lazy(() => import("@/features/auth/InvitedRegisterPage"));
 const ForgotPasswordPage = lazy(() => import("@/features/auth/ForgotPasswordPage"));
 const SchoolOnboardingPage = lazy(() => import("@/features/auth/SchoolOnboardingPage"));
 const VerifyReceiptPage = lazy(() => import("@/features/auth/VerifyReceiptPage"));
@@ -86,6 +87,7 @@ const PlatformSettingsPage = lazy(() => import("@/features/admin/PlatformSetting
 const MessagesPage = lazy(() => import("@/features/shared/MessagesPage"));
 const AnnouncementsFeedPage = lazy(() => import("@/features/shared/AnnouncementsFeedPage"));
 const AccountSettingsPage = lazy(() => import("@/features/shared/AccountSettingsPage"));
+const UserGuidePage = lazy(() => import("@/features/shared/UserGuidePage"));
 
 function LoadingScreen() {
   return (
@@ -106,6 +108,7 @@ export function AppRouter() {
         {/* Public */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/register/invited" element={<InvitedRegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/school-onboarding" element={<SchoolOnboardingPage />} />
         <Route path="/verify-receipt" element={<VerifyReceiptPage />} />
@@ -128,6 +131,7 @@ export function AppRouter() {
             <Route path="/parent/announcements" element={<AnnouncementsFeedPage />} />
             <Route path="/parent/transfers" element={<ParentTransfersPage />} />
             <Route path="/parent/settings" element={<AccountSettingsPage />} />
+            <Route path="/parent/guide" element={<UserGuidePage />} />
           </Route>
         </Route>
 
@@ -152,6 +156,7 @@ export function AppRouter() {
               <Route path="/school/incidents" element={<SchoolIncidentsPage />} />
               <Route path="/school/profile" element={<SchoolProfileEditorPage />} />
               <Route path="/school/settings" element={<SchoolSettingsPage />} />
+              <Route path="/school/guide" element={<UserGuidePage />} />
             </Route>
           </Route>
         </Route>
@@ -168,6 +173,7 @@ export function AppRouter() {
             <Route path="/teacher/announcements" element={<AnnouncementsFeedPage />} />
             <Route path="/teacher/profile" element={<TeacherProfilePage />} />
             <Route path="/teacher/settings" element={<AccountSettingsPage />} />
+            <Route path="/teacher/guide" element={<UserGuidePage />} />
           </Route>
         </Route>
 
@@ -180,6 +186,7 @@ export function AppRouter() {
             <Route path="/applicant/applications" element={<MyApplicationsPage />} />
             <Route path="/applicant/profile" element={<ApplicantProfilePage />} />
             <Route path="/applicant/settings" element={<AccountSettingsPage />} />
+            <Route path="/applicant/guide" element={<UserGuidePage />} />
           </Route>
         </Route>
 
@@ -196,6 +203,7 @@ export function AppRouter() {
             <Route path="/ministry/circulars" element={<CircularsPage />} />
             <Route path="/ministry/incidents" element={<MinistryIncidentsPage />} />
             <Route path="/ministry/settings" element={<AccountSettingsPage />} />
+            <Route path="/ministry/guide" element={<UserGuidePage />} />
           </Route>
         </Route>
 
@@ -210,6 +218,7 @@ export function AppRouter() {
             <Route path="/admin/broadcast" element={<BroadcastPage />} />
             <Route path="/admin/audit" element={<AuditLogPage />} />
             <Route path="/admin/settings" element={<PlatformSettingsPage />} />
+            <Route path="/admin/guide" element={<UserGuidePage />} />
           </Route>
         </Route>
 

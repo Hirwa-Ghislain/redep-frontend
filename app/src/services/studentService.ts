@@ -49,7 +49,13 @@ interface BackendChild {
   lastName: string;
   dateOfBirth: string;
   previousSchool: string | null;
-  applications: unknown[];
+  applications: Array<{
+    id: string;
+    status: "DRAFT" | "VALIDATED" | "PENDING_PAYMENT" | "ADMITTED" | "REJECTED";
+    schoolId?: string;
+    school: { id: string; name: string } | null;
+    schoolClass: { id: string; name: string } | null;
+  }>;
   enrollments: BackendEnrollmentRef[];
 }
 
@@ -204,6 +210,16 @@ export interface ParentAttendanceSummary {
   recent: Array<{ id: string; date: string; status: "PRESENT" | "ABSENT" | "LATE" | "EXCUSED"; courseName: string }>;
 }
 
+export interface ParentPaymentAccount {
+  studentId: string;
+  studentName: string;
+  schoolId: string;
+  schoolName: string;
+  className: string;
+  applicationPending: boolean;
+  charges: StudentChargeSummary[];
+}
+
 export async function fetchParentAttendance(studentId: string): Promise<ParentAttendanceSummary> {
   const res = await http.get<{
     summary: { attendanceRate: number; PRESENT: number; ABSENT: number; LATE: number; EXCUSED: number };
@@ -221,6 +237,32 @@ export const studentService = {
   async listByParent(parentId: string): Promise<StudentWithContext[]> {
     const res = await http.get<{ children: BackendChild[] }>("/parents/children");
     return res.children.map(mapChildToStudent).filter((s): s is StudentWithContext => s !== null);
+  },
+
+  /** Every child that currently has a fee charge, including OCR-validated applications that
+   *  have not been admitted yet. This is intentionally broader than `listByParent`, whose
+   *  contract only includes enrolled/former children. */
+  async listPaymentAccounts(): Promise<ParentPaymentAccount[]> {
+    const list = await http.get<{ children: BackendChild[] }>("/parents/children");
+    const dashboards = await Promise.all(
+      list.children.map(async (child) => ({ child, dashboard: await fetchDashboard(child.id) })),
+    );
+    return dashboards
+      .filter(({ dashboard }) => dashboard.charges.length > 0)
+      .map(({ child, dashboard }) => {
+        const enrollment = pickEnrollment(dashboard.enrollments);
+        const pendingApplication = child.applications.find((application) => application.status === "PENDING_PAYMENT");
+        const application = pendingApplication ?? child.applications[0];
+        return {
+          studentId: child.id,
+          studentName: `${child.firstName} ${child.lastName}`,
+          schoolId: enrollment?.schoolId ?? application?.schoolId ?? application?.school?.id ?? "",
+          schoolName: enrollment?.school.name ?? application?.school?.name ?? "School application",
+          className: enrollment?.schoolClass.name ?? application?.schoolClass?.name ?? "Class application",
+          applicationPending: pendingApplication !== undefined,
+          charges: dashboard.charges.map(mapCharge),
+        };
+      });
   },
 
   // GET /parents/children/:id (dashboard) — reused for a single child's flat summary.

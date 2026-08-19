@@ -1,5 +1,5 @@
-import { forwardRef, useId, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes, type SelectHTMLAttributes } from "react";
-import { ChevronDown } from "lucide-react";
+import { forwardRef, useId, useState, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes, type SelectHTMLAttributes } from "react";
+import { ChevronDown, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /* ------------------------------- Field wrapper ------------------------------- */
@@ -35,7 +35,7 @@ export function Field({ label, hint, error, required, id, children, className }:
 
 const controlBase =
   "w-full rounded-(--radius-ctl) border border-line-strong bg-surface text-ink text-[13.5px] placeholder:text-faint shadow-(--shadow-card) " +
-  "transition-colors duration-150 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 " +
+  "transition-[border-color,box-shadow,background-color] duration-200 hover:border-primary/45 focus:outline-none focus:border-primary focus:ring-3 focus:ring-primary/15 focus:shadow-[0_5px_16px_rgb(15_23_18_/_0.06)] " +
   "disabled:opacity-50 disabled:bg-paper aria-invalid:border-clay";
 
 /* ---------------------------------- Input ------------------------------------ */
@@ -45,14 +45,17 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   hint?: string;
   error?: string;
   icon?: ReactNode;
+  showPasswordToggle?: boolean;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { label, hint, error, icon, className, required, id: idProp, ...rest },
+  { label, hint, error, icon, showPasswordToggle = false, className, required, id: idProp, type, ...rest },
   ref,
 ) {
   const autoId = useId();
   const id = idProp ?? autoId;
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const canTogglePassword = showPasswordToggle && type === "password";
   return (
     <Field label={label} hint={hint} error={error} required={required} id={id} className={className}>
       <div className="relative">
@@ -61,10 +64,22 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           ref={ref}
           id={id}
           aria-invalid={error ? true : undefined}
-          className={cn(controlBase, "h-9 px-3", icon ? "pl-9" : undefined)}
+          type={canTogglePassword && passwordVisible ? "text" : type}
+          className={cn(controlBase, "h-9 px-3", icon ? "pl-9" : undefined, canTogglePassword ? "pr-10" : undefined)}
           required={required}
           {...rest}
         />
+        {canTogglePassword && (
+          <button
+            type="button"
+            onClick={() => setPasswordVisible((visible) => !visible)}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-faint transition-all duration-200 hover:bg-primary-soft hover:text-primary-deep hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary/20"
+            aria-label={passwordVisible ? "Hide password" : "Show password"}
+            aria-pressed={passwordVisible}
+          >
+            {passwordVisible ? <EyeOff className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}
+          </button>
+        )}
       </div>
     </Field>
   );
@@ -182,7 +197,7 @@ export function Switch({ checked, onChange, label, disabled, className }: Switch
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(
-        "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200",
+        "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-[background-color,box-shadow,transform] duration-200 hover:shadow-[0_0_0_4px_rgb(27_122_83_/_0.1)] active:scale-95",
         checked ? "bg-primary" : "bg-line-strong",
         disabled && "opacity-50 pointer-events-none",
         className,

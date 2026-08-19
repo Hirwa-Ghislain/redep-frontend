@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Wallet } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -12,15 +13,15 @@ import { Modal } from "@/components/ui/Modal";
 import { CardSkeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { paymentService, type ChargePaymentDestination } from "@/services/paymentService";
-import { studentService, type StudentWithContext } from "@/services/studentService";
+import { studentService, type ParentPaymentAccount } from "@/services/studentService";
 import { toast } from "@/stores/uiStore";
-import { formatDateTime, formatRWF, fullName } from "@/lib/format";
+import { formatDateTime, formatRWF } from "@/lib/format";
 import { CHANNEL_LABEL, FEE_CATEGORY_LABEL, PAYMENT_STATUS } from "@/lib/status";
 import type { FeeBalance, Payment } from "@/types";
 import { cn } from "@/lib/utils";
 
 interface PayTarget {
-  balance: FeeBalance;
+  balance: FeeBalance & { installmentCount: number; nextPaymentDue: string | null };
   studentName: string;
   schoolId: string;
 }
@@ -28,6 +29,8 @@ interface PayTarget {
 export default function PaymentsPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const focusStudentId = searchParams.get("studentId");
   const [payTarget, setPayTarget] = useState<PayTarget | null>(null);
 
   const [destinationId, setDestinationId] = useState("");
@@ -37,30 +40,30 @@ export default function PaymentsPage() {
   const [installmentAmount, setInstallmentAmount] = useState<number | "">("");
   const [partialReason, setPartialReason] = useState("");
   const [remainingDate, setRemainingDate] = useState("");
-  const [pendingResult, setPendingResult] = useState<{ checkoutUrl: string | null; instructions: string | null; paymentId: string } | null>(null);
+  const [pendingResult, setPendingResult] = useState<{ checkoutUrl: string | null; instructions: string | null; payerPhone: string | null; paymentId: string } | null>(null);
 
-  const { data: children = [], isLoading: loadingChildren } = useQuery({
-    queryKey: ["children", user?.id],
-    queryFn: () => studentService.listByParent(user!.id),
+  const { data: paymentAccounts = [], isLoading: loadingChildren } = useQuery({
+    queryKey: ["payment-accounts", user?.id],
+    queryFn: () => studentService.listPaymentAccounts(),
     enabled: Boolean(user),
   });
-  const enrolled = useMemo(() => children.filter((c) => c.status === "ENROLLED"), [children]);
-
-  const { data: balancesByChild = [], isLoading: loadingBalances } = useQuery({
-    queryKey: ["balances-all", user?.id, enrolled.map((c) => c.id).join(",")],
-    queryFn: async () => {
-      const withContext = await Promise.all(enrolled.map((c) => studentService.get(c.id)));
-      return withContext.map((child) => ({
-        child,
-        charges: child.charges ?? [],
-        balances: (child.charges ?? []).map((c): FeeBalance => ({
-          studentId: child.id, feeStructureId: c.id, feeName: c.feeName, category: c.feeType,
-          billed: c.amountDue, paid: c.amountPaid, due: Math.max(0, c.amountDue - c.amountPaid),
-        })),
-      }));
-    },
-    enabled: enrolled.length > 0,
-  });
+  const balancesByChild = useMemo(() => paymentAccounts
+    .map((account) => ({
+      account,
+      balances: account.charges.map((charge) => ({
+        studentId: account.studentId,
+        feeStructureId: charge.id,
+        feeName: charge.feeName,
+        category: charge.feeType,
+        billed: charge.amountDue,
+        paid: charge.amountPaid,
+        due: Math.max(0, charge.amountDue - charge.amountPaid),
+        installmentCount: charge.installmentCount,
+        nextPaymentDue: charge.nextPaymentDue,
+      })),
+    }))
+    .sort((a, b) => Number(b.account.studentId === focusStudentId) - Number(a.account.studentId === focusStudentId)),
+  [focusStudentId, paymentAccounts]);
 
   const { data: payments = [], isLoading: loadingPayments } = useQuery({
     queryKey: ["payments", user?.id],
@@ -89,8 +92,9 @@ export default function PaymentsPage() {
     },
     onSuccess: (result) => {
       setPayTarget(null);
-      setPendingResult({ checkoutUrl: result.checkoutUrl, instructions: result.instructions, paymentId: result.paymentId });
-      void qc.invalidateQueries({ queryKey: ["balances-all"] });
+      setPendingResult({ checkoutUrl: result.checkoutUrl, instructions: result.instructions, payerPhone: result.payerPhone, paymentId: result.paymentId });
+      void qc.invalidateQueries({ queryKey: ["payment-accounts"] });
+      void qc.invalidateQueries({ queryKey: ["payments"] });
     },
     onError: (e) => toast({ title: "Payment failed", description: (e as { message?: string })?.message ?? "Try again.", variant: "error" }),
   });
@@ -100,9 +104,11 @@ export default function PaymentsPage() {
     onSuccess: (result) => {
       if (result.status === "COMPLETED") {
         setPendingResult(null);
-        void qc.invalidateQueries({ queryKey: ["balances-all"] });
+        void qc.invalidateQueries({ queryKey: ["payment-accounts"] });
         void qc.invalidateQueries({ queryKey: ["payments"] });
         void qc.invalidateQueries({ queryKey: ["parent-due"] });
+        void qc.invalidateQueries({ queryKey: ["applications"] });
+        void qc.invalidateQueries({ queryKey: ["children"] });
         toast({ title: "Payment confirmed", description: "Receipt is ready under Receipts.", variant: "success" });
       } else if (result.status === "FAILED") {
         setPendingResult(null);
@@ -119,7 +125,7 @@ export default function PaymentsPage() {
     setPaymentMode("FULL");
     setPaymentMethod("MOMO");
     setPaymentPhone(user?.phone ?? "");
-    setInstallmentAmount("");
+    setInstallmentAmount(Math.ceil(target.balance.billed / 2));
     setPartialReason("");
     setRemainingDate("");
   };
@@ -142,22 +148,25 @@ export default function PaymentsPage() {
       />
 
       {/* Balances per child */}
-      {loadingChildren || loadingBalances ? (
+      {loadingChildren ? (
         <div className="space-y-4"><CardSkeleton /><CardSkeleton /></div>
       ) : (
         <div className="space-y-4">
-          {balancesByChild.map(({ child, balances }: { child: StudentWithContext; balances: FeeBalance[] }) => {
+          {balancesByChild.map(({ account, balances }: { account: ParentPaymentAccount; balances: PayTarget["balance"][] }) => {
             const childDue = balances.reduce((s, b) => s + b.due, 0);
             return (
-              <Card key={child.id} padded={false}>
+              <Card key={account.studentId} padded={false} className={account.studentId === focusStudentId ? "ring-2 ring-primary/20 border-primary" : undefined}>
                 <CardHeader
                   className="px-5 pt-4"
-                  title={fullName(child)}
-                  description={`${child.className} · ${child.schoolName}`}
+                  title={account.studentName}
+                  description={`${account.className} · ${account.schoolName}`}
                   action={
-                    <Badge variant={childDue ? "warning" : "success"} dot>
-                      {childDue ? `${formatRWF(childDue)} due` : "All paid"}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      {account.applicationPending && <Badge variant="info">Admission payment</Badge>}
+                      <Badge variant={childDue ? "warning" : "success"} dot>
+                        {childDue ? `${formatRWF(childDue)} due` : "All paid"}
+                      </Badge>
+                    </div>
                   }
                 />
                 <div className="divide-y divide-line">
@@ -180,7 +189,7 @@ export default function PaymentsPage() {
                       <Button
                         size="sm"
                         disabled={b.due === 0}
-                        onClick={() => openPay({ balance: b, studentName: fullName(child), schoolId: child.schoolId })}
+                        onClick={() => openPay({ balance: b, studentName: account.studentName, schoolId: account.schoolId })}
                       >
                         {b.due === 0 ? "Paid" : "Pay"}
                       </Button>
@@ -218,7 +227,7 @@ export default function PaymentsPage() {
         rows={payments}
         keyField={(p) => p.id}
         pageSize={8}
-        empty="No completed payments yet — pending payments appear here once confirmed."
+        empty="No payment transactions yet. New pending and completed payments will appear here automatically."
       />
 
       {/* Pay modal */}
@@ -232,7 +241,16 @@ export default function PaymentsPage() {
             <Button variant="ghost" onClick={() => setPayTarget(null)} disabled={realPay.isPending}>Cancel</Button>
             <Button
               loading={realPay.isPending}
-              disabled={!destinationId || (paymentMethod === "MOMO" && !paymentPhone)}
+              disabled={
+                !destinationId ||
+                (paymentMethod === "MOMO" && !paymentPhone) ||
+                (paymentMode === "INSTALLMENTS" && (
+                  Number(installmentAmount) < Math.ceil((payTarget?.balance.billed ?? 0) / 2) ||
+                  Number(installmentAmount) >= (payTarget?.balance.due ?? 0) ||
+                  partialReason.trim().length < 10 ||
+                  !remainingDate
+                ))
+              }
               onClick={() => realPay.mutate()}
             >
               {realPay.isPending ? "Starting…" : "Start payment"}
@@ -266,7 +284,7 @@ export default function PaymentsPage() {
                 label="Mode"
                 value={paymentMode}
                 onChange={(e) => setPaymentMode(e.target.value as "FULL" | "INSTALLMENTS")}
-                disabled={payTarget.balance.category === "APPLICATION"}
+                disabled={payTarget.balance.category === "APPLICATION" || payTarget.balance.installmentCount >= 1}
               >
                 <option value="FULL">Pay in full</option>
                 <option value="INSTALLMENTS">Pay in installments</option>
@@ -284,6 +302,9 @@ export default function PaymentsPage() {
                   type="number"
                   value={installmentAmount}
                   onChange={(e) => setInstallmentAmount(e.target.value === "" ? "" : Number(e.target.value))}
+                  min={Math.ceil(payTarget.balance.billed / 2)}
+                  max={Math.max(0, payTarget.balance.due - 1)}
+                  hint={`First installment must be at least ${formatRWF(Math.ceil(payTarget.balance.billed / 2))}. The second payment must clear the remaining balance.`}
                   required
                 />
                 <Textarea label="Reason for partial payment" value={partialReason} onChange={(e) => setPartialReason(e.target.value)} rows={3} required />
@@ -291,9 +312,20 @@ export default function PaymentsPage() {
               </>
             )}
 
+            {payTarget.balance.category === "APPLICATION" && (
+              <p className="rounded-xl bg-gold-soft px-3.5 py-2.5 text-[12.5px] text-gold-deep">
+                The application fee must be paid in full. Installments are not available for this charge.
+              </p>
+            )}
+            {payTarget.balance.category !== "APPLICATION" && payTarget.balance.installmentCount >= 1 && (
+              <p className="rounded-xl bg-sky-soft px-3.5 py-2.5 text-[12.5px] text-sky-deep">
+                This is the second and final payment, so it must clear the complete remaining balance.
+              </p>
+            )}
+
             <p className="flex items-start gap-2 text-[12.5px] text-muted">
               <Wallet className="size-4 shrink-0 mt-0.5" />
-              Payment is processed by XentriPay — MoMo sends a payment prompt to the phone above; card opens a secure checkout page.
+              Payment is processed by XentriPay. A MoMo prompt may appear on the phone above; if it does not, approve the pending transaction from the phone's MoMo menu. Card opens a secure checkout page.
             </p>
           </div>
         )}
@@ -320,9 +352,12 @@ export default function PaymentsPage() {
                 Open secure checkout
               </Button>
             ) : (
-              <p className="text-[13.5px] text-ink">{pendingResult.instructions ?? "Check your phone for a payment prompt."}</p>
+              <div className="space-y-2">
+                {pendingResult.payerPhone && <p className="text-[12.5px] text-muted">Payment phone: <span className="font-medium text-ink">{pendingResult.payerPhone}</span></p>}
+                <p className="text-[13.5px] text-ink">{pendingResult.instructions ?? "Approve the pending transaction from your phone's MoMo menu."}</p>
+              </div>
             )}
-            <p className="text-[12.5px] text-muted">Payments confirm automatically within a minute or two — tap "check status" once you've approved it.</p>
+            <p className="text-[12.5px] text-muted">Only tap "check status" after approving the transaction. XentriPay may mark an unapproved or cancelled request as failed.</p>
           </div>
         )}
       </Modal>

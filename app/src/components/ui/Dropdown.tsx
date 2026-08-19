@@ -62,12 +62,12 @@ export function Dropdown({ trigger, items, align = "right", className }: Dropdow
                   disabled={item.disabled}
                   onClick={() => { setOpen(false); item.onSelect(); }}
                   className={cn(
-                    "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-[13.5px] text-left transition-colors",
-                    item.danger ? "text-clay-deep hover:bg-clay-soft" : "text-ink hover:bg-paper",
+                    "group flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-[13.5px] text-left transition-[color,background-color,transform] duration-150 hover:translate-x-0.5 active:scale-[0.98]",
+                    item.danger ? "text-clay-deep hover:bg-clay-soft" : "text-ink hover:bg-primary-soft/60 hover:text-primary-deep",
                     item.disabled && "opacity-45 pointer-events-none",
                   )}
                 >
-                  {item.icon && <item.icon className="size-4 shrink-0" aria-hidden />}
+                  {item.icon && <item.icon className="size-4 shrink-0 transition-transform duration-200 group-hover:scale-110" aria-hidden />}
                   {item.label}
                 </button>
               ),

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Compass, FileCheck2, FileText, Paperclip } from "lucide-react";
+import { ArrowRight, Compass, FileCheck2, FileText, Paperclip, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PageTransition, Stagger, StaggerItem } from "@/components/motion";
 import { Badge } from "@/components/ui/Badge";
@@ -36,32 +36,35 @@ export default function ApplicationsPage() {
 
   const renderRow = (app: AdmissionApplication) => {
     const meta = app.backendStatus ? BACKEND_APPLICATION_STATUS[app.backendStatus] : ADMISSION_STATUS[app.status];
+    const awaitingPayment = app.backendStatus === "PENDING_PAYMENT" && Boolean(app.studentId);
     return (
-      <button
-        key={app.id}
-        type="button"
-        onClick={() => setSelected(app)}
-        className="flex w-full flex-wrap items-center gap-3 px-4 py-3 text-left hover:bg-paper/70 transition-colors"
-      >
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary-deep">
-          <FileText className="size-4" aria-hidden />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-medium text-ink">
-            {app.childFirstName} {app.childLastName}
-            <span className="font-normal text-muted text-[12.5px]"> · {levelOrClass(app)}</span>
-          </p>
-          <p className="text-[12px] text-muted mt-0.5">
-            {schoolName(app)} — submitted {app.submittedAt ? formatDate(app.submittedAt) : "—"}
-          </p>
-        </div>
-        {app.documents.length > 0 && (
-          <span className="inline-flex items-center gap-1 text-[12px] text-faint tnum">
-            <Paperclip className="size-3.5" /> {app.documents.length}
+      <div key={app.id} className="flex w-full items-center gap-2 pr-4 hover:bg-paper/70 transition-colors">
+        <button type="button" onClick={() => setSelected(app)} className="flex min-w-0 flex-1 flex-wrap items-center gap-3 px-4 py-3 text-left">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary-deep">
+            <FileText className="size-4" aria-hidden />
           </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-medium text-ink">
+              {app.childFirstName} {app.childLastName}
+              <span className="font-normal text-muted text-[12.5px]"> · {levelOrClass(app)}</span>
+            </p>
+            <p className="text-[12px] text-muted mt-0.5">
+              {schoolName(app)} — submitted {app.submittedAt ? formatDate(app.submittedAt) : "—"}
+            </p>
+          </div>
+          {app.documents.length > 0 && (
+            <span className="inline-flex items-center gap-1 text-[12px] text-faint tnum">
+              <Paperclip className="size-3.5" /> {app.documents.length}
+            </span>
+          )}
+          <Badge variant={meta.variant} dot>{meta.label}</Badge>
+        </button>
+        {awaitingPayment && (
+          <Link to={`/parent/payments?studentId=${encodeURIComponent(app.studentId!)}&applicationId=${encodeURIComponent(app.id)}`}>
+            <Button size="sm" iconRight={<ArrowRight className="size-3.5" />}>Continue payment</Button>
+          </Link>
         )}
-        <Badge variant={meta.variant} dot>{meta.label}</Badge>
-      </button>
+      </div>
     );
   };
 
@@ -188,6 +191,16 @@ export default function ApplicationsPage() {
       >
         {selected && (
           <div className="space-y-6">
+            {selected.backendStatus === "PENDING_PAYMENT" && selected.studentId && (
+              <Link
+                to={`/parent/payments?studentId=${encodeURIComponent(selected.studentId)}&applicationId=${encodeURIComponent(selected.id)}`}
+                onClick={() => setSelected(null)}
+              >
+                <Button className="w-full" icon={<Wallet className="size-4" />} iconRight={<ArrowRight className="size-4" />}>
+                  Continue admission payment
+                </Button>
+              </Link>
+            )}
             <div>
               <p className="text-[11px] font-bold uppercase tracking-wide text-faint mb-3">Status</p>
               {selected.timeline.length > 0 ? (

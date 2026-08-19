@@ -55,6 +55,7 @@ export default function LoginPage() {
         <Input
           label="Password"
           type="password"
+          showPasswordToggle
           autoComplete="current-password"
           placeholder="••••••••"
           icon={<KeyRound />}

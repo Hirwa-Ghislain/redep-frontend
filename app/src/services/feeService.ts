@@ -10,6 +10,7 @@ export interface RealSchoolFee {
   amount: number;
   currency: string;
   isActive?: boolean;
+  isOptional?: boolean;
   minimumFirstPayment?: number | null;
   restrictedServices?: string[];
   paymentDestinationId?: string | null;
@@ -23,6 +24,7 @@ export interface RealFeeInput {
   minimumFirstPayment?: number;
   restrictedServices?: string[];
   paymentDestinationId?: string;
+  isOptional?: boolean;
 }
 
 export interface RealFeeUpdateInput {
@@ -34,6 +36,7 @@ export interface RealFeeUpdateInput {
   minimumFirstPayment?: number;
   restrictedServices?: string[];
   paymentDestinationId?: string | null;
+  isOptional?: boolean;
 }
 
 export const feeService = {

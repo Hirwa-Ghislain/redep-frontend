@@ -117,6 +117,7 @@ export default function AccountSettingsPage() {
               <Input
                 label="Current password"
                 type="password"
+                showPasswordToggle
                 autoComplete="current-password"
                 icon={<KeyRound />}
                 value={passwords.current}
@@ -126,6 +127,7 @@ export default function AccountSettingsPage() {
               <Input
                 label="New password"
                 type="password"
+                showPasswordToggle
                 autoComplete="new-password"
                 hint="At least 8 characters."
                 value={passwords.next}

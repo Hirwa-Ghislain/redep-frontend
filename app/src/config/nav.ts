@@ -7,6 +7,7 @@ import {
   Building2,
   CalendarCheck,
   ClipboardList,
+  CircleHelp,
   Compass,
   FileBarChart,
   FileText,
@@ -70,13 +71,14 @@ export const PARENT_NAV: NavSection[] = [
     ],
   },
   {
-    items: [{ label: "Settings", to: "/parent/settings", icon: Settings }],
+    items: [{ label: "User guide", to: "/parent/guide", icon: CircleHelp }, { label: "Settings", to: "/parent/settings", icon: Settings }],
   },
 ];
 
 export const SCHOOL_NAV: NavSection[] = [
   {
     items: [
+      { label: "User guide", to: "/school/guide", icon: CircleHelp },
       { label: "Overview", to: "/school", icon: LayoutDashboard, end: true, permission: P.SCHOOL_DASHBOARD_VIEW },
       { label: "Admissions", to: "/school/admissions", icon: ClipboardList, permission: P.ADMISSIONS_VIEW },
       { label: "Students", to: "/school/students", icon: GraduationCap, permission: P.STUDENTS_VIEW },
@@ -138,7 +140,7 @@ export const TEACHER_NAV: NavSection[] = [
     ],
   },
   {
-    items: [{ label: "Profile", to: "/teacher/profile", icon: UserRound }],
+    items: [{ label: "User guide", to: "/teacher/guide", icon: CircleHelp }, { label: "Profile", to: "/teacher/profile", icon: UserRound }],
   },
 ];
 
@@ -149,6 +151,7 @@ export const APPLICANT_NAV: NavSection[] = [
       { label: "Job board", to: "/applicant/jobs", icon: Briefcase },
       { label: "My applications", to: "/applicant/applications", icon: FileText },
       { label: "Profile & CV", to: "/applicant/profile", icon: UserRound },
+      { label: "User guide", to: "/applicant/guide", icon: CircleHelp },
     ],
   },
 ];
@@ -177,6 +180,7 @@ export const MINISTRY_NAV: NavSection[] = [
       { label: "Incidents", to: "/ministry/incidents", icon: ShieldAlert, permission: P.MINISTRY_INCIDENTS_MANAGE },
     ],
   },
+  { items: [{ label: "User guide", to: "/ministry/guide", icon: CircleHelp }] },
 ];
 
 export const ADMIN_NAV: NavSection[] = [
@@ -197,4 +201,5 @@ export const ADMIN_NAV: NavSection[] = [
       { label: "Settings", to: "/admin/settings", icon: Settings },
     ],
   },
+  { items: [{ label: "User guide", to: "/admin/guide", icon: CircleHelp }] },
 ];

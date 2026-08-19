@@ -57,7 +57,7 @@ export default function ApplyPage() {
         description: result.message,
         variant: "success",
       });
-      navigate("/parent/applications");
+      navigate(`/parent/payments?studentId=${encodeURIComponent(result.studentId)}&applicationId=${encodeURIComponent(result.applicationId)}`);
     },
     onError: (e) => {
       const message = (e as { message?: string })?.message ?? "Please check the details and try again.";
