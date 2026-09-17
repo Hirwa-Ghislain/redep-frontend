@@ -21,6 +21,7 @@ const TrackIncidentPage = lazy(() => import("@/features/public/TrackIncidentPage
 const ParentDashboard = lazy(() => import("@/features/parent/ParentDashboard"));
 const DiscoverSchoolsPage = lazy(() => import("@/features/parent/DiscoverSchoolsPage"));
 const SchoolProfilePage = lazy(() => import("@/features/parent/SchoolProfilePage"));
+const ParentAttendancePage = lazy(() => import("@/features/parent/AttendanceReportPage"));
 const ApplyPage = lazy(() => import("@/features/parent/ApplyPage"));
 const ParentApplicationsPage = lazy(() => import("@/features/parent/ApplicationsPage"));
 const ChildrenPage = lazy(() => import("@/features/parent/ChildrenPage"));
@@ -125,6 +126,7 @@ export function AppRouter() {
             <Route path="/parent/applications" element={<ParentApplicationsPage />} />
             <Route path="/parent/children" element={<ChildrenPage />} />
             <Route path="/parent/children/:studentId" element={<ChildDetailPage />} />
+            <Route path="/parent/attendance" element={<ParentAttendancePage />} />
             <Route path="/parent/payments" element={<ParentPaymentsPage />} />
             <Route path="/parent/receipts" element={<ParentReceiptsPage />} />
             <Route path="/parent/messages" element={<MessagesPage />} />

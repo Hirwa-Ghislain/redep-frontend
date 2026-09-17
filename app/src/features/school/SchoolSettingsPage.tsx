@@ -8,11 +8,14 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Switch } from "@/components/ui/Input";
+import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { CardSkeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { P } from "@/config/permissions";
 import { schoolService } from "@/services/schoolService";
+import { authService } from "@/services/authService";
+import { useAuthStore } from "@/stores/authStore";
 import { toast } from "@/stores/uiStore";
 
 interface NotificationPrefs {
@@ -31,6 +34,7 @@ export default function SchoolSettingsPage() {
   const { user } = useAuth();
   const [prefs, setPrefs] = useState<NotificationPrefs>({ announcementEmails: true, feeReminders: true, admissionAlerts: true });
   const [deactivateOpen, setDeactivateOpen] = useState(false);
+  const [profile, setProfile] = useState({ firstName: user?.firstName ?? "", lastName: user?.lastName ?? "" });
 
   const { data: school, isLoading } = useQuery({
     queryKey: ["school", user?.schoolId],
@@ -47,6 +51,16 @@ export default function SchoolSettingsPage() {
     },
   });
 
+  const updateProfile = useMutation({
+    mutationFn: () => authService.updateProfile({ firstName: profile.firstName.trim(), lastName: profile.lastName.trim() }),
+    onSuccess: (updated) => {
+      const session = useAuthStore.getState().session;
+      if (session) useAuthStore.setState({ session: { ...session, user: updated } });
+      toast({ title: "Profile updated", description: "Your personal details have been saved.", variant: "success" });
+    },
+    onError: () => toast({ title: "Could not update profile", variant: "error" })
+  });
+
   const setPref = (key: keyof NotificationPrefs, value: boolean) => {
     setPrefs((p) => ({ ...p, [key]: value }));
     const meta = PREF_META.find((m) => m.key === key)!;
@@ -61,6 +75,18 @@ export default function SchoolSettingsPage() {
         <div className="grid md:grid-cols-2 gap-3.5"><CardSkeleton /><CardSkeleton /></div>
       ) : (
         <div className="grid md:grid-cols-2 gap-3.5 items-start">
+          <Card>
+            <CardHeader title="My profile" description="Your personal name as it appears across E-SHURI." />
+            <div className="grid grid-cols-2 gap-3">
+              <Input label="First name" value={profile.firstName} onChange={(event) => setProfile((current) => ({ ...current, firstName: event.target.value }))} />
+              <Input label="Last name" value={profile.lastName} onChange={(event) => setProfile((current) => ({ ...current, lastName: event.target.value }))} />
+            </div>
+            <Input className="mt-3" label="Email" value={user?.email ?? ""} disabled hint="Sign-in email changes require identity verification." />
+            <Button className="mt-4" loading={updateProfile.isPending} disabled={!profile.firstName.trim() || !profile.lastName.trim()} onClick={() => updateProfile.mutate()}>
+              Save my profile
+            </Button>
+          </Card>
+
           <Card>
             <CardHeader
               title="School identity"

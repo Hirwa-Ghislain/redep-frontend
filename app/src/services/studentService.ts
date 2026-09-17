@@ -208,6 +208,28 @@ export interface ParentAttendanceSummary {
   attendanceRate: number; // 0..1
   totals: { PRESENT: number; ABSENT: number; LATE: number; EXCUSED: number };
   recent: Array<{ id: string; date: string; status: "PRESENT" | "ABSENT" | "LATE" | "EXCUSED"; courseName: string }>;
+  byCourse: Array<{
+    courseId: string;
+    courseName: string;
+    totalLessons: number;
+    present: number;
+    absent: number;
+    late: number;
+    excused: number;
+    attendanceRate: number;
+  }>;
+  records: Array<{
+    id: string;
+    date: string;
+    recordedAt: string;
+    status: "PRESENT" | "ABSENT" | "LATE" | "EXCUSED";
+    note: string | null;
+    courseId: string;
+    courseName: string;
+    className: string;
+    schoolName: string;
+    recordedBy: string;
+  }>;
 }
 
 export interface ParentPaymentAccount {
@@ -222,13 +244,33 @@ export interface ParentPaymentAccount {
 
 export async function fetchParentAttendance(studentId: string): Promise<ParentAttendanceSummary> {
   const res = await http.get<{
-    summary: { attendanceRate: number; PRESENT: number; ABSENT: number; LATE: number; EXCUSED: number };
-    attendance: Array<{ id: string; attendanceDate: string; status: "PRESENT" | "ABSENT" | "LATE" | "EXCUSED"; course: { name: string } }>;
+    summary: {
+      attendanceRate: number; PRESENT: number; ABSENT: number; LATE: number; EXCUSED: number;
+      byCourse: Array<{ courseId: string; courseName: string; totalLessons: number; present: number; absent: number; late: number; excused: number; attendanceRate: number }>;
+    };
+    attendance: Array<{
+      id: string; attendanceDate: string; recordedAt: string; status: "PRESENT" | "ABSENT" | "LATE" | "EXCUSED"; note: string | null;
+      course: { id: string; name: string }; schoolClass: { name: string }; school: { name: string };
+      recordedBy: { firstName: string; lastName: string };
+    }>;
   }>(`/parents/children/${studentId}/attendance`);
   return {
     attendanceRate: res.summary.attendanceRate / 100,
     totals: { PRESENT: res.summary.PRESENT, ABSENT: res.summary.ABSENT, LATE: res.summary.LATE, EXCUSED: res.summary.EXCUSED },
     recent: res.attendance.slice(0, 15).map((a) => ({ id: a.id, date: a.attendanceDate, status: a.status, courseName: a.course.name })),
+    byCourse: res.summary.byCourse.map((course) => ({ ...course, attendanceRate: course.attendanceRate / 100 })),
+    records: res.attendance.map((record) => ({
+      id: record.id,
+      date: record.attendanceDate,
+      recordedAt: record.recordedAt,
+      status: record.status,
+      note: record.note,
+      courseId: record.course.id,
+      courseName: record.course.name,
+      className: record.schoolClass.name,
+      schoolName: record.school.name,
+      recordedBy: `${record.recordedBy.firstName} ${record.recordedBy.lastName}`
+    })),
   };
 }
 
