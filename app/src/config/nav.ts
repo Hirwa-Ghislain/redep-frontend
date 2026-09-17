@@ -53,6 +53,7 @@ export const PARENT_NAV: NavSection[] = [
       { label: "Find schools", to: "/parent/discover", icon: Compass },
       { label: "Applications", to: "/parent/applications", icon: FileText },
       { label: "My children", to: "/parent/children", icon: UsersRound },
+      { label: "Attendance reports", to: "/parent/attendance", icon: CalendarCheck },
     ],
   },
   {

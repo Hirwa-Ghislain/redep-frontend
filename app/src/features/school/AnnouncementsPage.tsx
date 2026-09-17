@@ -78,10 +78,7 @@ export default function AnnouncementsPage() {
 
       <div className="mb-4 flex items-start gap-2.5 rounded-(--radius-card) border border-line bg-sky-soft/60 px-4 py-3 text-[13px] text-sky-deep">
         <Info className="size-4 shrink-0 mt-0.5" aria-hidden />
-        <span>
-          The backend has no history endpoint for a school's own announcements yet — only publishing. The list
-          below only shows what was published in this browser session.
-        </span>
+        <span>School-wide notices are visible to every active parent and staff member. Class notices are limited to that class community.</span>
       </div>
 
       {isLoading ? (
@@ -90,8 +87,8 @@ export default function AnnouncementsPage() {
         <Card padded={false}>
           <EmptyState
             icon={Megaphone}
-            title="Nothing published this session"
-            description="Announcements reach parents' feeds the moment you publish."
+            title="No announcements yet"
+            description="Published announcements will remain available here for the school community."
             action={
               <Can permission={P.ANNOUNCEMENTS_PUBLISH}>
                 <Button icon={<Plus className="size-4" />} onClick={() => { setForm(EMPTY_FORM); setComposerOpen(true); }}>
