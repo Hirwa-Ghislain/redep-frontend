@@ -115,9 +115,10 @@ export const commsService = {
    * an explicit "under development" state instead of calling this at all.
    */
   async announcementsFor(opts: { schoolIds: string[]; audience: RoleKey }): Promise<Announcement[]> {
-    if (opts.audience !== "PARENT") return [];
-    const res = await http.get<{ communications: BackendCommunication[] }>("/parents/communications");
-    return res.communications.map((c) => ({
+    const responses = await Promise.all(opts.schoolIds.map((schoolId) =>
+      http.get<{ communications: BackendCommunication[] }>(`/schools/${schoolId}/communications`)
+    ));
+    return responses.flatMap((res) => res.communications).map((c) => ({
       id: c.id,
       schoolId: c.schoolId,
       title: c.title,
@@ -138,7 +139,7 @@ export const commsService = {
    * fully live and marks the history list underneath as limited rather than faking entries.
    */
   async announcementsBySchool(schoolId: string): Promise<Announcement[]> {
-    return [];
+    return this.announcementsFor({ schoolIds: [schoolId], audience: "SCHOOL_ADMIN" });
   },
 
   // POST /api/v1/announcements  |  live: POST /schools/:schoolId/communications
