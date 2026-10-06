@@ -23,7 +23,7 @@ const STATUSES: AttendanceStatus[] = ["PRESENT", "ABSENT", "LATE", "EXCUSED"];
 
 /** Selected-state styles per Badge variant used by ATTENDANCE_STATUS (mirrors Badge soft tints). */
 const ACTIVE_SEGMENT: Record<string, string> = {
-  success: "bg-primary-soft text-primary-deep",
+  success: "bg-success-soft text-success-deep",
   danger: "bg-clay-soft text-clay-deep",
   warning: "bg-gold-soft text-gold-deep",
   info: "bg-sky-soft text-sky-deep",

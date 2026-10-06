@@ -33,7 +33,7 @@ export function DataTable<T>({ columns, rows, keyField, onRowClick, loading, emp
     a === "right" ? "text-right" : a === "center" ? "text-center" : "text-left";
 
   return (
-    <div className="overflow-hidden rounded-(--radius-card) border border-line bg-surface shadow-(--shadow-card) transition-[border-color,box-shadow] duration-200 hover:border-line-strong hover:shadow-[0_5px_18px_rgb(15_23_18_/_0.06)]">
+    <div className="overflow-hidden rounded-(--radius-card) border border-line bg-surface shadow-(--shadow-card) transition-[border-color,box-shadow] duration-200 hover:border-line-strong hover:shadow-[0_5px_18px_rgb(0_65_90_/_0.08)]">
       <div className="overflow-x-auto">
         <table className="w-full text-[13px]">
           <thead>

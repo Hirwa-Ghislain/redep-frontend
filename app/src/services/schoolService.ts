@@ -1,4 +1,4 @@
-import type { PublicSchoolClass, School, SchoolLevel, SchoolType } from "@/types";
+import type { AdmissionPolicy, PublicSchoolClass, School, SchoolLevel, SchoolType } from "@/types";
 import { API_URL, http } from "@/lib/api/client";
 
 /** A NESA location record (province/district/sector/cell/village), as returned by GET /locations/*. */
@@ -45,6 +45,7 @@ interface BackendPublicClass {
   minimumConductGrade: string | number | null;
   availableSpots: number;
   isFull: boolean;
+  admissionPolicies?: AdmissionPolicy[];
 }
 
 interface BackendPublicSchool {
@@ -77,6 +78,7 @@ function mapBackendClass(c: BackendPublicClass): PublicSchoolClass {
     minimumConductGrade: c.minimumConductGrade === null ? null : Number(c.minimumConductGrade),
     availableSpots: c.availableSpots,
     isFull: c.isFull,
+    activeAdmissionPolicy: c.admissionPolicies?.[0],
   };
 }
 
@@ -183,15 +185,38 @@ export const schoolService = {
     return res.class;
   },
 
-  /** Sets minimum entry/conduct grade admission criteria for a class (used by automatic admissions).
+  /** Creates a new active admission-policy version for a class.
    *  PATCH /schools/:schoolId/classes/:classId/admission-criteria */
   async setAdmissionCriteria(
     schoolId: string,
     classId: string,
-    input: { minimumEntryGrade: number; minimumConductGrade: number },
-  ): Promise<RealSchoolClass> {
-    const res = await http.patch<{ class: RealSchoolClass }>(`/schools/${schoolId}/classes/${classId}/admission-criteria`, input);
+    input: {
+      name: string;
+      academicYear: string;
+      minimumOverallAverage?: number;
+      minimumConductGrade?: number;
+      requiredPreviousClass?: string;
+      subjectRequirements: Array<{ subject: string; minimumMark: number }>;
+    },
+  ): Promise<AdmissionPolicy> {
+    const res = await http.patch<{ class: AdmissionPolicy }>(`/schools/${schoolId}/classes/${classId}/admission-criteria`, input);
     return res.class;
+  },
+
+  async admissionPolicies(schoolId: string, classId: string): Promise<AdmissionPolicy[]> {
+    const res = await http.get<{ policies: AdmissionPolicy[] }>(`/schools/${schoolId}/classes/${classId}/admission-criteria`);
+    return res.policies;
+  },
+
+  async importConfirmedRoster(schoolId: string, academicYear: string, file: File): Promise<{
+    fileRows: number; importedStudents: number; rejectedRows: number; linkedToExistingParents: number;
+    invitationsSent: number; invitationFailures: Array<{ email: string; message: string }>;
+    errors: Array<{ row: number; message: string }>;
+  }> {
+    const form = new FormData();
+    form.append("academicYear", academicYear);
+    form.append("roster", file);
+    return http.post(`/schools/${schoolId}/students/import-confirmed-roster`, form);
   },
 
   /** Adds a course under a class, taught by a given teacher. POST /schools/:schoolId/classes/:classId/courses */

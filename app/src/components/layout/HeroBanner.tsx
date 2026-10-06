@@ -36,7 +36,7 @@ export function HeroBanner({ eyebrow, title, subtitle, actions, stats, className
       {/* soft gold corner glow */}
       <div
         className="absolute -right-16 -top-20 size-56 rounded-full opacity-20"
-        style={{ background: "radial-gradient(closest-side, #E7A917, transparent 70%)" }}
+        style={{ background: "radial-gradient(closest-side, #FCBB00, transparent 70%)" }}
         aria-hidden
       />
       <div className="relative flex flex-wrap items-center gap-x-6 gap-y-4">
