@@ -123,6 +123,27 @@ export interface PublicSchoolClass {
   minimumConductGrade: number | null;
   availableSpots: number;
   isFull: boolean;
+  activeAdmissionPolicy?: AdmissionPolicy;
+}
+
+export interface SubjectRequirement {
+  subject: string;
+  minimumMark: number;
+}
+
+export interface AdmissionPolicy {
+  id: ID;
+  name: string;
+  academicYear: string;
+  version: number;
+  isActive: boolean;
+  criteria: {
+    minimumOverallAverage?: number;
+    minimumConductGrade?: number;
+    requiredPreviousClass?: string;
+    subjectRequirements: SubjectRequirement[];
+  };
+  createdAt: string;
 }
 
 export interface SchoolClass {

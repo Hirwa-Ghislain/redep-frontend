@@ -11,7 +11,7 @@ const icons: Record<ToastVariant, typeof Info> = {
 };
 
 const accents: Record<ToastVariant, string> = {
-  success: "text-primary",
+  success: "text-success",
   error: "text-clay",
   warning: "text-gold-deep",
   info: "text-sky",

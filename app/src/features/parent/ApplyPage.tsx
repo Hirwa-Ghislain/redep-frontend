@@ -31,7 +31,7 @@ export default function ApplyPage() {
   const openClasses = classOptions.filter((c) => !("isFull" in c) || !c.isFull);
 
   const [child, setChild] = useState({
-    firstName: "", lastName: user?.lastName ?? "", dateOfBirth: "", classId: "", previousSchool: "",
+    firstName: "", lastName: user?.lastName ?? "", dateOfBirth: "", classId: "", previousSchool: "", previousClass: "",
   });
   const [annualReport, setAnnualReport] = useState<File | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -49,6 +49,7 @@ export default function ApplyPage() {
         lastName: child.lastName.trim(),
         dateOfBirth: child.dateOfBirth,
         previousSchool: child.previousSchool.trim(),
+        previousClass: child.previousClass.trim(),
         annualReport: annualReport!,
       }),
     onSuccess: (result) => {
@@ -72,6 +73,7 @@ export default function ApplyPage() {
     if (!child.dateOfBirth) next.dateOfBirth = "Required";
     if (!child.classId) next.classId = "Select a class";
     if (child.previousSchool.trim().length < 2) next.previousSchool = "Required";
+    if (!child.previousClass.trim()) next.previousClass = "Required";
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -95,7 +97,7 @@ export default function ApplyPage() {
         backTo={`/parent/discover/${schoolId}`}
         backLabel={school?.name ?? "School profile"}
         title={`Apply to ${school?.name ?? "…"}`}
-        description="Your child's report is validated automatically — no manual review queue."
+        description="Your child's report is checked automatically against the school's requirements."
       />
 
       <div className="grid lg:grid-cols-[1fr_310px] gap-4 items-start">
@@ -120,7 +122,9 @@ export default function ApplyPage() {
               </Select>
               <Input label="Previous school" value={child.previousSchool} error={errors.previousSchool}
                 onChange={(e) => setChild((c) => ({ ...c, previousSchool: e.target.value }))} required
-                className="sm:col-span-2" />
+              />
+              <Input label="Previous class" value={child.previousClass} error={errors.previousClass}
+                onChange={(e) => setChild((c) => ({ ...c, previousClass: e.target.value }))} required placeholder="e.g. P6 or S1" />
             </div>
             {openClasses.length === 0 && (
               <p className="text-[12.5px] text-clay-deep">This school has no open classes right now.</p>
@@ -159,8 +163,7 @@ export default function ApplyPage() {
               <CheckCircle2 className="size-4.5 shrink-0 mt-0.5" />
               <p>
                 The report is scanned automatically: the child's name, average grade and conduct grade
-                are extracted and checked against this class's admission criteria — no waiting for a
-                human reviewer.
+                are extracted and checked against this class's admission policy immediately.
               </p>
             </div>
           </div>
@@ -172,9 +175,10 @@ export default function ApplyPage() {
               <dl className="grid sm:grid-cols-2 gap-x-4 gap-y-3 text-[13.5px]">
                 <div><dt className="text-muted">Child</dt><dd className="font-semibold text-ink">{child.firstName} {child.lastName}</dd></div>
                 <div><dt className="text-muted">Date of birth</dt><dd className="font-medium text-ink tnum">{child.dateOfBirth}</dd></div>
-                <div><dt className="text-muted">Class</dt><dd className="font-medium text-ink">{selectedClass?.name ?? "—"}</dd></div>
+                <div><dt className="text-muted">Class</dt><dd className="font-medium text-ink">{selectedClass?.name ?? "Not selected"}</dd></div>
                 <div><dt className="text-muted">School</dt><dd className="font-medium text-ink">{school?.name}</dd></div>
                 <div><dt className="text-muted">Previous school</dt><dd className="font-medium text-ink">{child.previousSchool}</dd></div>
+                <div><dt className="text-muted">Previous class</dt><dd className="font-medium text-ink">{child.previousClass}</dd></div>
                 <div>
                   <dt className="text-muted mb-1">Annual report</dt>
                   <dd>{annualReport && <Badge variant="info">{annualReport.name}</Badge>}</dd>
@@ -185,8 +189,8 @@ export default function ApplyPage() {
               <CheckCircle2 className="size-4.5 shrink-0 mt-0.5" />
               <p>
                 Admission here is fully automatic: report validation, then payment of the application
-                and tuition fees, then the seat is confirmed. There is no manual "under review by a
-                person" step — pay from the Payments page as soon as this submits.
+                and tuition fees, then the seat is confirmed. You can continue to payment as soon as
+                the report passes every requirement.
               </p>
             </div>
           </div>

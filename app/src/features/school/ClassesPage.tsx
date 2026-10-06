@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BookPlus, GraduationCap, LayoutGrid, Plus, School, Sliders, UserRound, Users } from "lucide-react";
+import { BookPlus, GraduationCap, LayoutGrid, Plus, School, Sliders, Trash2, UserRound, Users } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PageTransition, Stagger, StaggerItem } from "@/components/motion";
 import { Badge } from "@/components/ui/Badge";
@@ -32,7 +32,11 @@ export default function ClassesPage() {
   const [newClass, setNewClass] = useState({ name: "", capacity: "40" });
   const [manage, setManage] = useState<PublicSchoolClass | null>(null);
   const [teacherId, setTeacherId] = useState("");
-  const [criteria, setCriteria] = useState({ minimumEntryGrade: "50", minimumConductGrade: "50" });
+  const [criteria, setCriteria] = useState({
+    name: "", academicYear: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
+    minimumOverallAverage: "", minimumConductGrade: "", requiredPreviousClass: "",
+    subjectRequirements: [] as Array<{ subject: string; minimumMark: string }>,
+  });
   const [course, setCourse] = useState({ name: "", teacherId: "" });
 
   const { data: school, isLoading } = useQuery({
@@ -73,11 +77,15 @@ export default function ClassesPage() {
 
   const saveCriteria = useMutation({
     mutationFn: () => schoolService.setAdmissionCriteria(schoolId, manage!.id, {
-      minimumEntryGrade: Number(criteria.minimumEntryGrade), minimumConductGrade: Number(criteria.minimumConductGrade),
+      name: criteria.name.trim(), academicYear: criteria.academicYear.trim(),
+      ...(criteria.minimumOverallAverage === "" ? {} : { minimumOverallAverage: Number(criteria.minimumOverallAverage) }),
+      ...(criteria.minimumConductGrade === "" ? {} : { minimumConductGrade: Number(criteria.minimumConductGrade) }),
+      ...(criteria.requiredPreviousClass.trim() === "" ? {} : { requiredPreviousClass: criteria.requiredPreviousClass.trim() }),
+      subjectRequirements: criteria.subjectRequirements.map((item) => ({ subject: item.subject.trim(), minimumMark: Number(item.minimumMark) })),
     }),
     onSuccess: () => {
       invalidate();
-      toast({ title: "Admission criteria saved", description: "Automatic admission will use these thresholds.", variant: "success" });
+      toast({ title: "Admission policy activated", description: "New applications will be checked against this version.", variant: "success" });
     },
     onError: (e) => toast({ title: "Could not save criteria", description: (e as unknown as ApiError).message, variant: "error" }),
   });
@@ -96,6 +104,10 @@ export default function ClassesPage() {
   const avgOccupancy = classes.length
     ? classes.reduce((s, c) => s + (c.capacity ? c.currentEnrollment / c.capacity : 0), 0) / classes.length
     : 0;
+  const hasAdmissionRequirement = Boolean(
+    criteria.minimumOverallAverage || criteria.minimumConductGrade || criteria.requiredPreviousClass.trim() || criteria.subjectRequirements.length,
+  );
+  const subjectsAreValid = criteria.subjectRequirements.every((item) => item.subject.trim() && item.minimumMark !== "");
 
   const homeroomName = (classId: string) => {
     const t = teachers.find((t) => t.homeroomClasses.some((c) => c.id === classId));
@@ -105,9 +117,14 @@ export default function ClassesPage() {
   const openManage = (cls: PublicSchoolClass) => {
     setManage(cls);
     setTeacherId("");
+    const active = cls.activeAdmissionPolicy;
     setCriteria({
-      minimumEntryGrade: cls.minimumEntryGrade !== null ? String(cls.minimumEntryGrade) : "50",
-      minimumConductGrade: cls.minimumConductGrade !== null ? String(cls.minimumConductGrade) : "50",
+      name: active?.name ?? `${cls.name} admission policy`,
+      academicYear: active?.academicYear ?? `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
+      minimumOverallAverage: active?.criteria.minimumOverallAverage === undefined ? "" : String(active.criteria.minimumOverallAverage),
+      minimumConductGrade: active?.criteria.minimumConductGrade === undefined ? "" : String(active.criteria.minimumConductGrade),
+      requiredPreviousClass: active?.criteria.requiredPreviousClass ?? "",
+      subjectRequirements: (active?.criteria.subjectRequirements ?? []).map((item) => ({ subject: item.subject, minimumMark: String(item.minimumMark) })),
     });
     setCourse({ name: "", teacherId: "" });
   };
@@ -164,9 +181,9 @@ export default function ClassesPage() {
                     <UserRound className="size-3 shrink-0" aria-hidden />
                     {homeroom ?? "No homeroom teacher"}
                   </p>
-                  {(cls.minimumEntryGrade !== null || cls.minimumConductGrade !== null) && (
+                  {cls.activeAdmissionPolicy && (
                     <p className="text-[11.5px] text-faint mt-1">
-                      Entry ≥ {cls.minimumEntryGrade ?? "—"} · Conduct ≥ {cls.minimumConductGrade ?? "—"}
+                      {cls.activeAdmissionPolicy.name} · {cls.activeAdmissionPolicy.academicYear}
                     </p>
                   )}
                   <div className="mt-3">
@@ -192,7 +209,7 @@ export default function ClassesPage() {
         open={createOpen}
         onClose={() => !createClass.isPending && setCreateOpen(false)}
         title="Add class"
-        description="Only a name and capacity can be set at creation — homeroom teacher, courses and admission criteria are managed afterwards."
+        description="Add the class first. You can then assign its teacher, courses and admission policy."
         footer={
           <>
             <Button variant="ghost" onClick={() => setCreateOpen(false)} disabled={createClass.isPending}>Cancel</Button>
@@ -213,7 +230,7 @@ export default function ClassesPage() {
         open={Boolean(manage)}
         onClose={() => setManage(null)}
         title={manage?.name ?? ""}
-        description="Assign a homeroom teacher, set automatic-admission criteria, and add courses."
+        description="Manage the class teacher, admission policy and courses."
       >
         {manage && (
           <div className="space-y-6">
@@ -232,17 +249,33 @@ export default function ClassesPage() {
 
             <section className="space-y-2.5 border-t border-line pt-4">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-faint">
-                Automatic-admission criteria
+                Admission policy
               </p>
               <p className="text-[12px] text-muted">
-                Applications with an OCR-extracted grade/conduct below these thresholds are not auto-validated.
+                The annual report is read automatically and checked against every requirement below.
               </p>
               <div className="grid grid-cols-2 gap-3">
-                <Input label="Minimum entry grade" type="number" min={0} max={100} value={criteria.minimumEntryGrade} onChange={(e) => setCriteria({ ...criteria, minimumEntryGrade: e.target.value })} />
+                <Input label="Policy name" value={criteria.name} onChange={(e) => setCriteria({ ...criteria, name: e.target.value })} />
+                <Input label="Academic year" value={criteria.academicYear} onChange={(e) => setCriteria({ ...criteria, academicYear: e.target.value })} placeholder="2026-2027" />
+                <Input label="Previous class" value={criteria.requiredPreviousClass} onChange={(e) => setCriteria({ ...criteria, requiredPreviousClass: e.target.value })} placeholder="e.g. S1" />
+                <Input label="Minimum overall average" type="number" min={0} max={100} value={criteria.minimumOverallAverage} onChange={(e) => setCriteria({ ...criteria, minimumOverallAverage: e.target.value })} />
                 <Input label="Minimum conduct grade" type="number" min={0} max={100} value={criteria.minimumConductGrade} onChange={(e) => setCriteria({ ...criteria, minimumConductGrade: e.target.value })} />
               </div>
-              <Button size="sm" icon={<GraduationCap className="size-3.5" />} loading={saveCriteria.isPending} onClick={() => saveCriteria.mutate()}>
-                Save criteria
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-[12px] font-medium text-ink">Subject requirements</p>
+                  <Button size="sm" variant="ghost" icon={<Plus className="size-3.5" />} onClick={() => setCriteria((value) => ({ ...value, subjectRequirements: [...value.subjectRequirements, { subject: "", minimumMark: "" }] }))}>Add subject</Button>
+                </div>
+                {criteria.subjectRequirements.map((item, index) => (
+                  <div key={index} className="grid grid-cols-[1fr_110px_36px] gap-2 items-end">
+                    <Input label="Subject" value={item.subject} onChange={(e) => setCriteria((value) => ({ ...value, subjectRequirements: value.subjectRequirements.map((entry, position) => position === index ? { ...entry, subject: e.target.value } : entry) }))} />
+                    <Input label="Minimum" type="number" min={0} max={100} value={item.minimumMark} onChange={(e) => setCriteria((value) => ({ ...value, subjectRequirements: value.subjectRequirements.map((entry, position) => position === index ? { ...entry, minimumMark: e.target.value } : entry) }))} />
+                    <button aria-label="Remove subject requirement" className="h-10 rounded-lg text-clay hover:bg-clay-soft transition-colors" onClick={() => setCriteria((value) => ({ ...value, subjectRequirements: value.subjectRequirements.filter((_, position) => position !== index) }))}><Trash2 className="size-4 mx-auto" /></button>
+                  </div>
+                ))}
+              </div>
+              <Button size="sm" icon={<GraduationCap className="size-3.5" />} loading={saveCriteria.isPending} disabled={!criteria.name.trim() || !criteria.academicYear.trim() || !hasAdmissionRequirement || !subjectsAreValid} onClick={() => saveCriteria.mutate()}>
+                Activate policy
               </Button>
             </section>
 

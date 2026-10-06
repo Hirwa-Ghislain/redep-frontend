@@ -46,7 +46,7 @@ export function FileDrop({ label, hint, files, onChange, onFilesChange, accept =
         onDrop={(e) => { e.preventDefault(); setDragging(false); addFiles(e.dataTransfer.files); }}
         className={cn(
           "group flex flex-col items-center justify-center gap-1.5 rounded-(--radius-card) border-2 border-dashed px-4 py-6 transition-[border-color,background-color,box-shadow,transform] duration-200 active:scale-[0.99]",
-          dragging ? "border-primary bg-primary-soft/70 scale-[1.01] shadow-[0_8px_24px_rgb(27_122_83_/_0.12)]" : "border-line-strong bg-paper/60 hover:border-primary/60 hover:bg-primary-soft/35 hover:-translate-y-px hover:shadow-[0_7px_20px_rgb(15_23_18_/_0.07)]",
+          dragging ? "border-primary bg-primary-soft/70 scale-[1.01] shadow-[0_8px_24px_rgb(0_109_145_/_0.14)]" : "border-line-strong bg-paper/60 hover:border-primary/60 hover:bg-primary-soft/35 hover:-translate-y-px hover:shadow-[0_7px_20px_rgb(0_65_90_/_0.08)]",
         )}
       >
         <Upload className="size-5 text-muted transition-[color,transform] duration-200 group-hover:text-primary group-hover:-translate-y-0.5" aria-hidden />

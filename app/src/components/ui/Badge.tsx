@@ -4,12 +4,12 @@ import { cn } from "@/lib/utils";
 export type BadgeVariant = "success" | "warning" | "danger" | "info" | "neutral" | "gold" | "ink";
 
 const variants: Record<BadgeVariant, string> = {
-  success: "bg-primary-soft text-primary-deep",
+  success: "bg-success-soft text-success-deep",
   warning: "bg-gold-soft text-gold-deep",
   danger: "bg-clay-soft text-clay-deep",
   info: "bg-sky-soft text-sky-deep",
   neutral: "bg-ink/6 text-muted",
-  gold: "bg-gold text-ink",
+  gold: "bg-gold text-pine-deep",
   ink: "bg-ink text-paper",
 };
 
