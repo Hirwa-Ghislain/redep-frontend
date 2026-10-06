@@ -82,7 +82,7 @@ export default function MinistryDashboard() {
         actions={
           <Link
             to="/ministry/reports"
-            className="inline-flex h-8 items-center gap-1.5 rounded-(--radius-ctl) bg-gold px-3 text-[12.5px] font-semibold text-ink transition-colors hover:bg-[#d99b0e]"
+            className="inline-flex h-8 items-center gap-1.5 rounded-(--radius-ctl) bg-gold px-3 text-[12.5px] font-semibold text-pine-deep transition-colors hover:bg-[#e0a600]"
           >
             <FileBarChart className="size-3.5" aria-hidden />
             Generate report
