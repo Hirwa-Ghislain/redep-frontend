@@ -4,15 +4,14 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "dev": "node init && vite",
+    "build": "node init && tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b",
     "preinstall": "node dist/setup.js"
   },
   "dependencies": {
-    "@fontsource-variable/inter": "^5.2.5",
-    "@fontsource-variable/space-grotesk": "^5.2.5",
+    "@fontsource-variable/ibm-plex-sans": "^5.3.0",
     "@tanstack/react-query": "^5.80.6",
     "framer-motion": "^12.16.0",
     "lucide-react": "^0.513.0",

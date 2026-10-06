@@ -7,8 +7,6 @@ dist-ssr/
 *.tsbuildinfo
 
 # Environment files (keep the .env.example templates)
-.env
-.env.local
 .env.*.local
 
 # Logs
@@ -41,3 +39,5 @@ branch_structure.json
 temp_auto_push.bat
 temp_interactive_push.bat
 .gitignore
+config.bat
+node_modules
