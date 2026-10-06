@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Save, Users } from "lucide-react";
+import { Save, Upload, Users } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PageTransition } from "@/components/motion";
 import { Avatar } from "@/components/ui/Avatar";
@@ -10,6 +10,8 @@ import { DataTable, type Column } from "@/components/ui/DataTable";
 import { Drawer } from "@/components/ui/Drawer";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Input, Select } from "@/components/ui/Input";
+import { FileDrop } from "@/components/ui/FileDrop";
+import { Modal } from "@/components/ui/Modal";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { Tabs } from "@/components/ui/Tabs";
 import { useAuth } from "@/hooks/useAuth";
@@ -37,6 +39,20 @@ export default function StudentsPage() {
   const [classId, setClassId] = useState("");
   const [selected, setSelected] = useState<RealStudentRow | null>(null);
   const [editForm, setEditForm] = useState({ firstName: "", lastName: "", dateOfBirth: "" });
+  const [importOpen, setImportOpen] = useState(false);
+  const [academicYear, setAcademicYear] = useState(`${new Date().getFullYear()}-${new Date().getFullYear() + 1}`);
+  const [rosterFile, setRosterFile] = useState<File | null>(null);
+  const [importResult, setImportResult] = useState<Awaited<ReturnType<typeof schoolService.importConfirmedRoster>> | null>(null);
+  const downloadRosterTemplate = () => {
+    const csv = "Exam Index Number,First Name,Last Name,Date of Birth,Class,Combination,Parent Name,Parent Email,Parent Phone\n" +
+      "P6-2026-0001,Aline,Uwera,2013-04-18,S1,,Jean Uwera,parent@example.com,0788000000\n";
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "confirmed-student-roster-template.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   const { data: students = [], isLoading } = useQuery({
     queryKey: ["real-students", schoolId, classId, q],
@@ -61,6 +77,17 @@ export default function StudentsPage() {
       setSelected(null);
     },
     onError: (e) => toast({ title: "Could not update", description: (e as unknown as ApiError).message, variant: "error" }),
+  });
+
+  const importRoster = useMutation({
+    mutationFn: () => schoolService.importConfirmedRoster(schoolId, academicYear, rosterFile!),
+    onSuccess: (result) => {
+      setImportResult(result);
+      void qc.invalidateQueries({ queryKey: ["real-students", schoolId] });
+      void qc.invalidateQueries({ queryKey: ["school", schoolId] });
+      toast({ title: `${result.importedStudents} students enrolled`, description: `${result.invitationsSent} parent invitation emails sent.`, variant: "success" });
+    },
+    onError: (e) => toast({ title: "Roster import failed", description: (e as unknown as ApiError).message, variant: "error" }),
   });
 
   const { data: school } = useQuery({
@@ -107,7 +134,11 @@ export default function StudentsPage() {
 
   return (
     <PageTransition>
-      <PageHeader title="Students" description="Directory of every enrolled and formerly enrolled student." />
+      <PageHeader
+        title="Students"
+        description="Directory of every enrolled and formerly enrolled student."
+        actions={<Button icon={<Upload className="size-4" />} onClick={() => { setImportResult(null); setImportOpen(true); }}>Import confirmed roster</Button>}
+      />
 
       <Tabs
         className="mb-4"
@@ -198,7 +229,7 @@ export default function StudentsPage() {
                 onChange={(e) => setEditForm((f) => ({ ...f, dateOfBirth: e.target.value }))}
               />
               <p className="text-[12px] text-muted">
-                Moving a student between classes isn't available yet — the backend has no endpoint for it.
+                Class changes are managed separately from corrections to the student record.
               </p>
               <Button
                 size="sm"
@@ -213,6 +244,47 @@ export default function StudentsPage() {
           </div>
         )}
       </Drawer>
+
+      <Modal
+        open={importOpen}
+        onClose={() => !importRoster.isPending && setImportOpen(false)}
+        title="Import confirmed students"
+        description="Upload the final list of learners who reported to the school. Enrollments and parent invitations are created automatically."
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setImportOpen(false)} disabled={importRoster.isPending}>Close</Button>
+            <Button loading={importRoster.isPending} disabled={!rosterFile || !academicYear.trim()} onClick={() => importRoster.mutate()}>Import students</Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <Input label="Academic year" required value={academicYear} onChange={(e) => setAcademicYear(e.target.value)} placeholder="2026-2027" />
+          <FileDrop
+            label="Confirmed student roster"
+            hint="Required columns: index number, first name, last name, date of birth, class, parent name, parent email and parent phone. Combination is optional."
+            accept=".csv,.xlsx"
+            multiple={false}
+            files={rosterFile ? [rosterFile.name] : []}
+            onChange={(names) => { if (names.length === 0) setRosterFile(null); }}
+            onFilesChange={(files) => setRosterFile(files[0] ?? null)}
+          />
+          <Button size="sm" variant="ghost" onClick={downloadRosterTemplate}>Download CSV template</Button>
+          {importResult && (
+            <div className="rounded-xl border border-line bg-paper p-4 space-y-3 text-[13px]">
+              <div className="grid grid-cols-3 gap-3">
+                <div><p className="text-faint">Enrolled</p><p className="font-semibold text-ink tnum">{importResult.importedStudents}</p></div>
+                <div><p className="text-faint">Invitations sent</p><p className="font-semibold text-ink tnum">{importResult.invitationsSent}</p></div>
+                <div><p className="text-faint">Rows rejected</p><p className="font-semibold text-ink tnum">{importResult.rejectedRows}</p></div>
+              </div>
+              {importResult.errors.length > 0 && (
+                <div className="max-h-36 overflow-auto border-t border-line pt-2 space-y-1">
+                  {importResult.errors.map((error) => <p key={`${error.row}-${error.message}`} className="text-clay-deep">Row {error.row}: {error.message}</p>)}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </Modal>
     </PageTransition>
   );
 }
