@@ -42,7 +42,7 @@ export function TrendChart({ data, xKey, series, height = 260, formatter }: Tren
         />
         <Tooltip
           content={<ChartTooltip formatter={formatter} />}
-          cursor={{ stroke: "#CFC9B8", strokeWidth: 1 }}
+          cursor={{ stroke: "#C5DBE4", strokeWidth: 1 }}
         />
         {!single && (
           <Legend

@@ -35,7 +35,7 @@ export function Field({ label, hint, error, required, id, children, className }:
 
 const controlBase =
   "w-full rounded-(--radius-ctl) border border-line-strong bg-surface text-ink text-[13.5px] placeholder:text-faint shadow-(--shadow-card) " +
-  "transition-[border-color,box-shadow,background-color] duration-200 hover:border-primary/45 focus:outline-none focus:border-primary focus:ring-3 focus:ring-primary/15 focus:shadow-[0_5px_16px_rgb(15_23_18_/_0.06)] " +
+  "transition-[border-color,box-shadow,background-color] duration-200 hover:border-primary/45 focus:outline-none focus:border-primary focus:ring-3 focus:ring-primary/15 focus:shadow-[0_5px_16px_rgb(0_65_90_/_0.08)] " +
   "disabled:opacity-50 disabled:bg-paper aria-invalid:border-clay";
 
 /* ---------------------------------- Input ------------------------------------ */
@@ -197,7 +197,7 @@ export function Switch({ checked, onChange, label, disabled, className }: Switch
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(
-        "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-[background-color,box-shadow,transform] duration-200 hover:shadow-[0_0_0_4px_rgb(27_122_83_/_0.1)] active:scale-95",
+        "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-[background-color,box-shadow,transform] duration-200 hover:shadow-[0_0_0_4px_rgb(0_109_145_/_0.12)] active:scale-95",
         checked ? "bg-primary" : "bg-line-strong",
         disabled && "opacity-50 pointer-events-none",
         className,

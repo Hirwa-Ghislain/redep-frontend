@@ -12,7 +12,10 @@ import { useI18nStore } from "@/stores/i18nStore";
 
 interface InvitationClaims {
   email: string;
-  role: "TEACHER" | "ACCOUNTANT";
+  role: "TEACHER" | "ACCOUNTANT" | "PARENT";
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
 }
 
 const steps = [
@@ -28,8 +31,13 @@ function readInvitationClaims(token: string): InvitationClaims | null {
     const normalized = encoded.replace(/-/g, "+").replace(/_/g, "/");
     const payload = JSON.parse(decodeURIComponent(Array.from(atob(normalized), (character) =>
       `%${character.charCodeAt(0).toString(16).padStart(2, "0")}`).join(""))) as Record<string, unknown>;
-    if (typeof payload.email !== "string" || (payload.role !== "TEACHER" && payload.role !== "ACCOUNTANT")) return null;
-    return { email: payload.email, role: payload.role };
+    if (typeof payload.email !== "string" || !["TEACHER", "ACCOUNTANT", "PARENT"].includes(String(payload.role))) return null;
+    return {
+      email: payload.email, role: payload.role as InvitationClaims["role"],
+      ...(typeof payload.firstName === "string" ? { firstName: payload.firstName } : {}),
+      ...(typeof payload.lastName === "string" ? { lastName: payload.lastName } : {}),
+      ...(typeof payload.phone === "string" ? { phone: payload.phone } : {}),
+    };
   } catch {
     return null;
   }
@@ -46,7 +54,7 @@ export default function InvitedRegisterPage() {
   const [step, setStep] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
-    firstName: "", lastName: "", email: invitation?.email ?? "", phone: "", nationalId: "",
+    firstName: invitation?.firstName ?? "", lastName: invitation?.lastName ?? "", email: invitation?.email ?? "", phone: invitation?.phone ?? "", nationalId: "",
     dateOfBirth: "", password: "", confirmPassword: "",
   });
 
@@ -112,16 +120,16 @@ export default function InvitedRegisterPage() {
       <span className="flex size-11 items-center justify-center rounded-2xl bg-primary-soft text-primary-deep mb-4">
         <BadgeCheck className="size-5" aria-hidden />
       </span>
-      <h1 className="font-display text-[26px] font-bold text-ink">Join your school team</h1>
+      <h1 className="font-display text-[26px] font-bold text-ink">{invitation?.role === "PARENT" ? "Join your child's school" : "Join your school team"}</h1>
       <p className="text-muted text-[14px] mt-1 mb-5">
-        Complete your verified staff profile. Your school and role are securely attached to this invitation.
+        {invitation?.role === "PARENT" ? "Set up your verified parent profile to access your child's school portal." : "Complete your verified staff profile. Your school and role are securely attached to this invitation."}
       </p>
 
       {invitation && (
         <div className="mb-4 flex items-center justify-between rounded-(--radius-card) border border-primary/20 bg-primary-soft/60 px-4 py-3">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-wide text-primary-deep">Assigned role</p>
-            <p className="text-[13.5px] font-semibold text-ink">{invitation.role === "TEACHER" ? "Teacher" : "Accountant"}</p>
+            <p className="text-[13.5px] font-semibold text-ink">{invitation.role === "TEACHER" ? "Teacher" : invitation.role === "ACCOUNTANT" ? "Accountant" : "Parent"}</p>
           </div>
           <BadgeCheck className="size-5 text-primary-deep" aria-hidden />
         </div>
@@ -156,15 +164,15 @@ export default function InvitedRegisterPage() {
       <form onSubmit={submit} className="space-y-4" noValidate>
         {step === 0 && <>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Input label="First name" autoComplete="given-name" value={form.firstName} onChange={set("firstName")} error={errors.firstName} required />
-            <Input label="Last name" autoComplete="family-name" value={form.lastName} onChange={set("lastName")} error={errors.lastName} required />
+            <Input label="First name" autoComplete="given-name" value={form.firstName} onChange={set("firstName")} readOnly={Boolean(invitation?.firstName)} error={errors.firstName} required />
+            <Input label="Last name" autoComplete="family-name" value={form.lastName} onChange={set("lastName")} readOnly={Boolean(invitation?.lastName)} error={errors.lastName} required />
           </div>
           <Input label="Invited email" type="email" icon={<Mail className="size-4" />} value={form.email} onChange={set("email")} readOnly={Boolean(invitation)} error={errors.email} hint={invitation ? "Filled from the secure invitation and cannot be changed." : "It must exactly match the address where the school sent the invitation."} required />
-          <Input label="Phone" type="tel" autoComplete="tel" placeholder="07XXXXXXXX" value={form.phone} onChange={set("phone")} error={errors.phone} required />
+          <Input label="Phone" type="tel" autoComplete="tel" placeholder="07XXXXXXXX" value={form.phone} onChange={set("phone")} readOnly={Boolean(invitation?.phone)} error={errors.phone} required />
         </>}
         {step === 1 && <>
           <Input label="National ID" inputMode="numeric" maxLength={16} value={form.nationalId} onChange={set("nationalId")} error={errors.nationalId} hint="We verify that this identity matches the names on your invitation." required />
-          <Input label="Date of birth" type="date" value={form.dateOfBirth} onChange={set("dateOfBirth")} error={errors.dateOfBirth} hint="Invited staff must be at least 18 years old." required />
+          <Input label="Date of birth" type="date" value={form.dateOfBirth} onChange={set("dateOfBirth")} error={errors.dateOfBirth} hint="Account holders must be at least 18 years old." required />
         </>}
         {step === 2 && <>
           <Input label="Password" type="password" showPasswordToggle autoComplete="new-password" value={form.password} onChange={set("password")} error={errors.password} hint="10+ characters with upper/lower case, number and special character." required />
@@ -173,7 +181,7 @@ export default function InvitedRegisterPage() {
         <div className="flex gap-3 pt-1">
           {step > 0 && <Button type="button" size="lg" variant="secondary" icon={<ArrowLeft className="size-4" />} onClick={() => { setErrors({}); setStep((current) => current - 1); }}>Back</Button>}
           <Button type="submit" size="lg" loading={loading} disabled={!token} iconRight={<ArrowRight className="size-4" />} className="flex-1">
-            {step === steps.length - 1 ? "Create staff account" : "Continue"}
+            {step === steps.length - 1 ? invitation?.role === "PARENT" ? "Create parent account" : "Create staff account" : "Continue"}
           </Button>
         </div>
       </form>

@@ -13,6 +13,7 @@ export interface ApplyInput {
   lastName: string;
   dateOfBirth: string;
   previousSchool: string;
+  previousClass: string;
   annualReport: File;
 }
 
@@ -120,6 +121,7 @@ export const admissionService = {
     form.append("lastName", input.lastName);
     form.append("dateOfBirth", input.dateOfBirth);
     form.append("previousSchool", input.previousSchool);
+    form.append("previousClass", input.previousClass);
     form.append("annualReport", input.annualReport);
     const res = await http.post<{
       student: { id: string };

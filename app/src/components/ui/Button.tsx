@@ -14,11 +14,11 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variants: Record<Variant, string> = {
-  primary: "bg-primary text-white hover:bg-primary-deep hover:shadow-[0_8px_20px_rgb(27_122_83_/_0.22)] border border-transparent shadow-(--shadow-card)",
-  secondary: "bg-surface text-ink border border-line-strong hover:border-primary/35 hover:bg-primary-soft/45 hover:text-primary-deep hover:shadow-[0_6px_16px_rgb(15_23_18_/_0.08)] shadow-(--shadow-card)",
+  primary: "bg-primary text-white hover:bg-primary-deep hover:shadow-[0_8px_20px_rgb(0_109_145_/_0.24)] border border-transparent shadow-(--shadow-card)",
+  secondary: "bg-surface text-ink border border-line-strong hover:border-primary/35 hover:bg-primary-soft/45 hover:text-primary-deep hover:shadow-[0_6px_16px_rgb(0_65_90_/_0.1)] shadow-(--shadow-card)",
   ghost: "bg-transparent text-muted hover:text-ink hover:bg-ink/5 border border-transparent",
-  danger: "bg-clay text-white hover:bg-clay-deep hover:shadow-[0_8px_20px_rgb(196_83_46_/_0.2)] border border-transparent shadow-(--shadow-card)",
-  gold: "bg-gold text-ink hover:bg-[#d99b0e] hover:shadow-[0_8px_20px_rgb(231_169_23_/_0.22)] border border-transparent shadow-(--shadow-card)",
+  danger: "bg-clay text-white hover:bg-clay-deep hover:shadow-[0_8px_20px_rgb(228_0_20_/_0.2)] border border-transparent shadow-(--shadow-card)",
+  gold: "bg-gold text-pine-deep hover:bg-[#e0a600] hover:shadow-[0_8px_20px_rgb(252_187_0_/_0.25)] border border-transparent shadow-(--shadow-card)",
 };
 
 const sizes: Record<Size, string> = {

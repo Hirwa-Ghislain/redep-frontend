@@ -15,7 +15,7 @@ export function PublicPageLayout({ children }: { children: ReactNode }) {
       <div
         className="absolute inset-x-0 top-0 h-[480px] opacity-60 [mask-image:linear-gradient(to_bottom,black,transparent)]"
         style={{
-          backgroundImage: "radial-gradient(circle, rgb(15 23 18 / 0.10) 1.2px, transparent 1.2px)",
+          backgroundImage: "radial-gradient(circle, rgb(0 109 145 / 0.12) 1.2px, transparent 1.2px)",
           backgroundSize: "24px 24px",
         }}
         aria-hidden
